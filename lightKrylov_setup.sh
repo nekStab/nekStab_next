@@ -18,11 +18,8 @@ read -p "Do you want to install/update necessary packages? (y/n): " confirm
 if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
     echo "Installing dependencies..."
     if [ "$OS" == "Linux" ]; then
-        sudo apt -y update
-        sudo apt install fpm
-        # conda config --add channels conda-forge
-        # conda create -n fpm fpm
-        # conda activate fpm
+        conda config --add channels conda-forge
+        conda install fpm
     elif [ "$OS" == "Darwin" ]; then
         brew tap fortran-lang/fortran
         brew update
@@ -65,7 +62,7 @@ else
 fi
 
 fpm clean
-#fpm build --verbose --flag "-Wall -Wextra -g -fbacktrace -fbounds-check"
+#fpm install --verbose --flag "-Wall -Wextra -g -fbacktrace -fbounds-check"
 fpm install --flag "-O3 -march=native -funroll-loops -ffast-math"
 
 echo "LightKrylov setup complete."

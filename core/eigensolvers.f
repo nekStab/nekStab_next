@@ -388,7 +388,247 @@
       end subroutine krylov_schur
 
 
+      subroutine krylov_schur_light
 
+            ! new version usking lightKrylov
+            use krylov_subspace
+            use LightKrylov, only: arnoldi_factorization
+
+            implicit none
+            include 'SIZE'
+            include 'TOTAL'
+      
+      !     -----Krylov basis V for the projection M*V = V*H -----
+            type(krylov_vector), allocatable, dimension(:) :: Q
+      
+      !     ----- Upper Hessenberg matrix -----
+            real, allocatable,dimension(:,:) :: H
+            real, allocatable,dimension(:,:) :: b_vec
+      
+      !     ----- Eigenvalues (VP) and eigenvectors (FP) of the Hessenberg matrix -----
+            complex*16, allocatable,dimension(:) :: vals
+            complex*16, allocatable,dimension(:,:) :: vecs
+      
+            real, allocatable, dimension(:) :: residual
+      
+      !     ----- Miscellaneous -----
+            type(krylov_vector) :: wrk, wrk2
+      
+            integer :: mstart, cnt, m
+            real                               :: alpha, beta, glsc3
+            logical                            :: converged
+            integer                            :: i, j
+            character(len=30)                  :: filename
+      
+
+            real :: info = 0.0d0
+
+            
+      !     ----- Allocate arrays -----
+            allocate(Q(k_dim+1))
+            allocate(H(k_dim+1,k_dim),b_vec(1,k_dim),vals(k_dim),vecs(k_dim,k_dim),residual(k_dim))
+      
+            n      = nx1*ny1*nz1*nelv
+            time   = 0.0d0
+            H(:,:)  = 0.0d0; b_vec  = 0.0d0 ; residual = 0.0d0
+            call krylov_zero(Q(1:k_dim+1))
+      
+      !     ----- Loading baseflow from disk (optional) -----
+      
+            if(ifldbf)then            !skip loading if single run
+               write(filename,'(a,a,a)')'BF_',trim(SESSION),'0.f00001'
+               if(nid.eq.0)write(*,*)'Loading base flow: ',filename
+               call load_fld(filename)
+            else
+               if(nid.eq.0)write(*,*)'Baseflow prescribed by the useric function in the .usr'
+            endif
+      
+            !t      (lx1,ly1,lz1,lelt,ldimt)
+            !tbase  (lx1,ly1,lz1,lelt,ldimt)
+            !tp     (lpx1*lpy1*lpz1*lpelt,ldimt,lpert)
+      
+      !     ----- Save baseflow to disk (recommended) -----
+            call opcopy(ubase,vbase,wbase,vx,vy,vz)
+      
+            if (ldimt.gt.0) then
+             do m = 1,ldimt
+              call copy(tbase(:,:,:,:,m),t(:,:,:,:,m),n)
+             enddo
+            endif
+      
+      !     ----- Prepare stability parameters -----
+      
+            if( istep.eq.0 .and. (
+           $     uparam(1).eq.3.11 .or. ! Floquet direct
+           $     uparam(1).eq.3.21 .or. ! Floquet adjoint
+           $     uparam(1).eq.3.31    ! Floquet direct-adjoint
+           $     ) )then
+               param(10)=time         ! upo period in field
+               if(nid.eq.0)write(6,*)'Floquet mode !!!'
+               if(nid.eq.0)write(6,*)' getting endTime from file: endTime=',param(10)
+            endif
+            call bcast(param(10), wdsize)
+      
+      !     ----- First vector (new from noise or restart) -----
+      
+            if (uparam(2).eq.0) then
+      
+               if(nid.eq.0)write(6,*)'Starting first Arnoldi decomposition...'
+      
+      !     ----- Creates seed vector for the Krylov subspace -----
+      
+               if(ifseed_nois)then    ! noise as initial seed
+      
+                  if(nid.eq.0)write(6,*)'Filling fields with noise...'
+                  call add_noise(vxp(:,1),vyp(:,1),vzp(:,1),tp(:,:,1))
+                  wrk2%vx(:) = vxp(:, 1) ; wrk2%vy(:) = vyp(:, 1) ; wrk2%vz(:) = vzp(:, 1)
+                  wrk2%pr(:) = prp(:, 1)
+                  if (ldimt.gt.0) then
+                   do m = 1,ldimt
+                    wrk2%theta(:,m) = tp(:, m, 1)
+                   enddo
+                  endif
+                  call krylov_normalize(wrk2, alpha)
+                  call matvec(wrk, wrk2)
+      
+               elseif(ifseed_symm)then ! symmetry initial seed
+      
+                  if(nid.eq.0)write(6,*)'Enforcing symmetric seed perturb...'
+                  call add_symmetric_seed(vxp(:,1),vyp(:,1),vzp(:,1),tp(:,:,1))
+      
+               elseif(ifseed_load)then ! loading initial seed (e.g. Re_ )
+      
+                  if (uparam(01) .ge. 3.0 .and. uparam(01) .lt. 3.2 ) then
+                     write(filename,'(a,a,a)')'dRe',trim(SESSION),'0.f00001'
+      
+                  elseif(uparam(01) .ge. 3.2 .and. uparam(01) .lt. 3.3 ) then
+                     write(filename,'(a,a,a)')'aRe',trim(SESSION),'0.f00001'
+                  endif
+      
+                  if(nid.eq.0)write(*,*)'Load real part of mode 1 as seed: ',filename
+                  call load_fld(filename)
+                  call nopcopy(vxp(:,1),vyp(:,1),vzp(:,1),prp(:,1),tp(:,:,1), vx,vy,vz,pr,t(:,:,:,:,1))
+      
+               else
+      
+                  call opcopy(vxp(:,1), vyp(:,1), vzp(:,1), ubase, vbase, wbase)
+                  if (ldimt.gt.0) then
+                   do m = 1,ldimt
+                    call copy(tp(:,m,1),tbase(:,:,:,:,m),n)
+                   enddo
+                  endif
+      
+               endif
+      
+      !     ----- Normalized to unit-norm -----
+      
+               wrk%vx(:) = vxp(:, 1) ; wrk%vy(:) = vyp(:, 1) ; wrk%vz(:) = vzp(:, 1)
+               wrk%pr(:) = prp(:, 1)
+               if (ldimt.gt.0) then
+                do m = 1,ldimt
+                 wrk%theta(:,m) = tp(:, m, 1)
+                enddo
+               endif
+               call krylov_normalize(wrk, alpha)
+      
+               mstart = 1; istep = 1; time = 0.0d0
+      
+               call krylov_copy(Q(1), wrk)
+      
+               call whereyouwant('KRY',1)
+               time = 0.0d0
+               call outpost(Q(1)%vx, Q(1)%vy, Q(1)%vz, Q(1)%pr, Q(1)%theta, 'KRY')
+      
+            elseif(uparam(2).gt.0)then
+      
+               mstart = int(uparam(2))
+      
+               if(nid.eq.0)then
+                  write(6,*)'Restarting from:',mstart
+                  write(6,'(a,a,i4.4)')' Loading Hessenberg matrix: HES',trim(SESSION),mstart
+                  write(filename,'(a,a,i4.4)')'HES',trim(SESSION),mstart
+      
+                  open(67, file=trim(filename), status='unknown', form='formatted')
+                  if (k_dim.lt.mstart) then !subsampling
+                     do i = 1,k_dim+1
+                        do j = 1,mstart
+                           if (j.le.k_dim)read(67,"(1E15.7)") H(i,j)
+                        enddo
+                     enddo
+                  else
+                     read(67, *)  (( H(i, j), j=1, mstart ), i = 1, mstart+1 )
+                  endif
+                  close(67)
+                  write(6,*)'Broadcast H matrix to all procs...'
+               endif                  !nid.eq.0
+               call bcast(H,(k_dim+1)*k_dim*wdsize) !broadcast H matrix to all procs
+            
+               mstart=mstart+1        !careful here!
+               call load_files(Q, mstart, k_dim+1, 'KRY')
+               if(nid.eq.0) write(6,*)'Restart fields loaded to memory!'
+      
+            endif
+      
+      !     ======================================
+      !     =====                            =====
+      !     ===== Krylov-Schur decomposition =====
+      !     =====                            =====
+      !     ======================================
+      
+            schur_cnt = 0
+            converged = .false.
+            do while ( .not. converged )
+
+      ! !     --> Arnoldi factorization.
+      !          call arnoldi_factorization(Q, H, mstart, k_dim, k_dim)
+      ! !     --> Compute the eigenspectrum of the Hessenberg matrix.
+      !          call eig(H(1:k_dim, 1:k_dim), vecs, vals, k_dim)
+      
+
+            call arnoldi_factorization(A, X, H, info, kstart, kend, verbosity, tol, transpose)
+
+
+      !     --> Check the residual of the eigenvalues.
+               residual = abs(H(k_dim+1, k_dim) * vecs(k_dim, :))
+               cnt = count(residual .lt. eigen_tol)
+               if (nid .eq. 0) write(6, *) 'converged eigenvalues:',cnt
+      
+      !     --> Select whether to stop or apply Schur condensation depending on schur_tgt.
+               select case (schur_tgt)
+      
+      !     --> k-step Arnoldi factorization completed.
+               case (:0)
+                  converged = .true.
+                  if (nid .eq. 0) write(6, *) 'Arnoldi factorization completed.'
+      
+      !     --> Krylov-Schur factorization.
+               case (1:)
+                  if (cnt .ge. schur_tgt) then ! Krylov-Schur factorization completed.
+                     converged = .true.
+                  else                ! Apply Schur condensation before restarting the factorization.
+                     schur_cnt = schur_cnt + 1
+                     if (nid .eq. 0) write(6, *) 'Starting Schur condensation phase.',schur_cnt
+                     call schur_condensation(mstart, H, Q, k_dim)
+                  endif
+      
+               end select
+      
+            enddo
+      
+      !     ----- Output all the spectrums and converged eigenmodes -----
+            if(nid.eq.0)write(6,*)'Exporting modes...'
+            if(nid.eq.0)print *,''
+            call outpost_ks(vals, vecs, Q, residual)
+      
+            if(nid.eq.0)write(6,*)'converged eigenmodes:',cnt
+            if(nid.eq.0)write(6,*)'Eigenproblem solver finished.'
+      
+      !     --> Deallocation.
+            deallocate(Q)
+            deallocate(H, b_vec, vals, vecs)
+      
+            return
+            end subroutine krylov_schur_light
 !-----------------------------------------------------------------------
 
 

@@ -1,6 +1,5 @@
 c-----------------------------------------------------------------------
       subroutine userchk
-      use LightKrylov, only: eigs
       include 'SIZE'
       include 'TOTAL'
 
