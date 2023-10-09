@@ -52,6 +52,13 @@ else
 fi
 
 #-------------------------------------------------------------------------------
+# Linking with LightKrylov library
+#-------------------------------------------------------------------------------
+export USR_LFLAGS+=" -lLightKrylov"
+export USR_LFLAGS+=" -L$HOME/.local/lib -lLightKrylov"
+export FFLAGS+=" -I/$HOME/.local/include"
+
+#-------------------------------------------------------------------------------
 # Architecture Detection
 #-------------------------------------------------------------------------------
 case $(uname -s) in
