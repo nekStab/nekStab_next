@@ -209,7 +209,14 @@ c-----------------------------------------------------------------------
             if(nid.eq.0)write(6,*)'Krylov-Schur MODE NOT CORRECTLY SPECIFIED!'
             call nek_end
          endif
-         call krylov_schur
+
+         if    (uparam(1).eq.3.4)then
+            if(nid.eq.0)write(6,*)'NEW Krylov using LightKrylov for direct LNSE...'
+            call krylov_schur_light
+         else 
+            call krylov_schur
+         endif
+
          call nek_end
 
       case(4)                   ! in postprocessing.f
