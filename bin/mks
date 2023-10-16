@@ -65,7 +65,7 @@ fi
 #-------------------------------------------------------------------------------
 export USR_LFLAGS+=" -lLightKrylov"
 export USR_LFLAGS+=" -L$HOME/.local/lib -lLightKrylov"
-export FFLAGS+=" -I/$HOME/.local/include"
+export FFLAGS+=" -I$HOME/.local/include"
 
 #-------------------------------------------------------------------------------
 # Architecture Detection
