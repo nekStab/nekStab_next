@@ -83,7 +83,7 @@ FFLAGS+=" -DNVERSION=\"'${N_VERSION}'\" -DNSVERSION=\"'${NS_VERSION}'\""
 export FFLAGS
 
 # User-specified object files
-USR="krylov_subspace.o matvec.o krylov_decomposition.o eigensolvers.o lapack_wrapper.o fixedp.o usr_extra.o utils.o IO.o postproc.o newton_krylov.o sensitivity.o"
+USR="krylov_subspace.o matvec.o krylov_decomposition.o eigensolvers.o lapack_wrapper.o usr_extra.o utils.o IO.o"
 export USR
 
 # Output summary of settings
