@@ -52,6 +52,15 @@ else
 fi
 
 #-------------------------------------------------------------------------------
+# Linking with Lapack and other necessary libraries
+#-------------------------------------------------------------------------------
+# Append Lapack and Blas libraries to user linker flags
+# Lapack is a library of linear algebra routines.
+# Blas (Basic Linear Algebra Subprograms) is used by Lapack.
+# export USR_LFLAGS+=" -llapack -lblas"
+# export USR_LFLAGS+=" -lopenblas"
+
+#-------------------------------------------------------------------------------
 # Linking with LightKrylov library
 #-------------------------------------------------------------------------------
 export USR_LFLAGS+=" -lLightKrylov"

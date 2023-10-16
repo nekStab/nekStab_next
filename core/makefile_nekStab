@@ -6,4 +6,3 @@
  $(OBJDIR)/usr_extra.o    :$(NEKSTAB_SOURCE_ROOT)/core/usr_extra.f;    $(F77) -c $(FL2) $< -o $@
  $(OBJDIR)/utils.o        :$(NEKSTAB_SOURCE_ROOT)/core/utils.f;        $(F77) -c $(FL2) $< -o $@
  $(OBJDIR)/IO.o           :$(NEKSTAB_SOURCE_ROOT)/core/IO.f;           $(F77) -c $(FL2) $< -o $@
- $(OBJDIR)/newton_krylov.o     :$(NEKSTAB_SOURCE_ROOT)/core/newton_krylov.f;      $(F77) -c $(FL2) $< -o $@

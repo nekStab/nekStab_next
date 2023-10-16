@@ -1,6 +1,4 @@
       module krylov_subspace
-
-      use LightKrylov
       implicit none
       include 'SIZE'
 
@@ -9,7 +7,6 @@
       integer, public, parameter :: lv = lx1*ly1*lz1*lelv
       integer, public, parameter :: lp = lx2*ly2*lz2*lelv
       integer, save, public :: n,n2
-      
       type, public :: krylov_vector
       real, dimension(lv) :: vx, vy, vz
       real, dimension(lp) :: pr
@@ -20,73 +17,7 @@
       type(krylov_vector), save, public :: ic_nwt, fc_nwt
       real,save,allocatable,dimension(:, :),public ::uor,vor,wor,tor
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-      type, extends(abstract_vector), public :: rvector
-
-      real, dimension(lv) :: vx, vy, vz
-      real, dimension(lp) :: pr
-      real, dimension(lv,ldimt) :: theta
-      real :: time
-
       contains
-            private
-            procedure, pass(self), public :: zero
-            procedure, pass(self), public :: dot
-            procedure, pass(self), public :: scal
-            procedure, pass(self), public :: axpby
-      end type rvector
-
-      contains
-
-          subroutine zero(self)
-            class(rvector), intent(inout) :: self
-            self%data = 0.0D+00
-            return
-          end subroutine zero
-        
-          double precision function dot(self, vec) result(alpha)
-            class(rvector), intent(in)         :: self
-            class(abstract_vector), intent(in) :: vec
-        
-            select type(vec)
-            type is(rvector)
-               alpha = dot_product(self%data, vec%data)
-            end select
-            return
-          end function dot
-        
-          subroutine scal(self, alpha)
-            class(rvector), intent(inout) :: self
-            real, intent(in) :: alpha
-            self%data = self%data * alpha
-            return
-          end subroutine scal
-        
-          subroutine axpby(self, alpha, vec, beta)
-            class(rvector), intent(inout) :: self
-            class(abstract_vector), intent(in) :: vec
-            real, intent(in) :: alpha, beta
-        
-            select type(vec)
-            type is(rvector)
-               self%data = alpha * self%data + beta*vec%data
-            end select
-            return
-          end subroutine axpby
-
       end module krylov_subspace
 
 

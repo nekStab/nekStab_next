@@ -572,17 +572,3 @@ c-----------------------------------------------------------------------
       if (ndim.eq.3) call addcol3(a3,b3,c3,ntot1)
       return
       end subroutine opaddcol3
-c-----------------------------------------------------------------------
-      subroutine set_rjet(ub)   !round jet profile for axissymetric jet
-      include 'SIZE'
-      include 'TOTAL'
-      real ub(1),theta_0
-      theta_0=0.0250d0
-      do i=1,nx1*ny1*nz1*nelv
-!     x = xm1(i,1,1,1)
-         y = ym1(i,1,1,1)
-         ub(i)=0.50d0*(1.0d0-tanh((1.0d0/(4.0d0*theta_0))*(y-(1.0d0/(4.0d0*y)))))
-      enddo
-      return
-      end subroutine set_rjet
-c-----------------------------------------------------------------------
