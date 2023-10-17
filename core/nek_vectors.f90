@@ -31,18 +31,18 @@
             procedure, pass(self), public :: axpby => real_axpby
       end type real_nek_vector
 
-      type, extends(abstract_vector), public :: cplx_nek_vector
+      type, extends(abstract_vector), public :: cmplx_nek_vector
             complex, dimension(lv) :: vx, vy, vz
             complex, dimension(lp) :: pr
             complex, dimension(lv,ldimt) :: t
             complex :: time
       contains
             private
-            procedure, pass(self), public :: zero => cplx_zero
-            procedure, pass(self), public :: dot => cplx_dot
-            procedure, pass(self), public :: scal => cplx_scal
-            procedure, pass(self), public :: axpby => cplx_axpby
-      end type cplx_nek_vector
+            procedure, pass(self), public :: zero => cmplx_zero
+            procedure, pass(self), public :: dot => cmplx_dot
+            procedure, pass(self), public :: scal => cmplx_scal
+            procedure, pass(self), public :: axpby => cmplx_axpby
+      end type cmplx_nek_vector
 
       type(real_nek_vector), save, public :: ic_nwt, fc_nwt
       real,save,allocatable,dimension(:, :),public ::uor,vor,wor
@@ -131,56 +131,56 @@
       
             ! Complex prodcedures definitions.
 
-            subroutine cplx_zero(self)
+            subroutine cmplx_zero(self)
             implicit none
             include 'SIZE'      
             include 'TOTAL'
-            class(cplx_nek_vector), intent(inout) :: self
+            class(cmplx_nek_vector), intent(inout) :: self
             call noprzero(self%vx,self%vy,self%vz,self%pr,self%t)
             self%time = 0.0D0
             return
-            end subroutine cplx_zero
+            end subroutine cmplx_zero
             
-            real function cplx_dot(self, vec) result(alpha)
+            real function cmplx_dot(self, vec) result(alpha)
             implicit none
             include 'SIZE'      
             include 'TOTAL'
-            class(cplx_nek_vector), intent(in) :: self
+            class(cmplx_nek_vector), intent(in) :: self
             class(abstract_vector), intent(in) :: vec
             integer m
             nv = nx1*ny1*nz1*nelv
             nt = nx1*ny1*nz1*nelt
             select type(vec)
-            type is(cplx_nek_vector)
+            type is(cmplx_nek_vector)
             ! bm1s is real, glsc3 is real
             end select
             return
-            end function cplx_dot
+            end function cmplx_dot
             
-            subroutine cplx_scal(self, alpha)
+            subroutine cmplx_scal(self, alpha)
             implicit none
             include 'SIZE'      
             include 'TOTAL'
-            class(cplx_nek_vector), intent(inout) :: self
+            class(cmplx_nek_vector), intent(inout) :: self
             real, intent(in) :: alpha
             call nopcmult(self%vx,self%vy,self%vz,self%pr,self%t, alpha)
             self%time = self%time * alpha
             return
-            end subroutine cplx_scal
+            end subroutine cmplx_scal
             
-            subroutine cplx_axpby(self, alpha, vec, beta)
+            subroutine cmplx_axpby(self, alpha, vec, beta)
             implicit none
             include 'SIZE'      
             include 'TOTAL'
-            class(cplx_nek_vector), intent(inout) :: self
+            class(cmplx_nek_vector), intent(inout) :: self
             class(abstract_vector), intent(in) :: vec
             real , intent(in) :: alpha, beta
             select type(vec)
-            type is(cplx_nek_vector)
+            type is(cmplx_nek_vector)
             call nopaxpby(self%vx,self%vy,self%vz,self%pr,self%t,alpha,vec%vx,vec%vy,vec%vz,vec%pr,vec%t,beta)
             end select
             return
-            end subroutine cplx_axpby
+            end subroutine cmplx_axpby
 
       end module nek_vectors
 
