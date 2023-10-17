@@ -4,6 +4,14 @@
       implicit none
       include 'SIZE'
 
+      ! Define an interface for the glsc3 function
+      interface 
+      real function glsc3(a,b,mult,n)
+      real, intent(in) :: a(*),b(*),mult(*)
+      integer, intent(in) :: n
+      end function glsc3
+      end interface
+
       private
 
       integer, public, parameter :: lv = lx1*ly1*lz1*lelv
@@ -58,7 +66,6 @@
 
             class(nek_vector), intent(in)      :: self
             class(abstract_vector), intent(in) :: vec
-            real :: my_glsc3
             integer m
             nv = nx1*ny1*nz1*nelv
             nt = nx1*ny1*nz1*nelt
@@ -66,15 +73,15 @@
             type is(nek_vector)
 
             ! --> Kinetic energy.
-            alpha = my_glsc3(self%vx, bm1s, vec%vx, nv)
-            alpha = alpha + my_glsc3(self%vy, bm1s, vec%vy, nv)
-            if (if3d) alpha = alpha + my_glsc3(self%vz, bm1s, vec%vz, nv)
+            alpha = glsc3(self%vx, bm1s, vec%vx, nv)
+            alpha = alpha + glsc3(self%vy, bm1s, vec%vy, nv)
+            if (if3d) alpha = alpha + glsc3(self%vz, bm1s, vec%vz, nv)
             
             ! --> Potential energy.
-            if (ifto) alpha = alpha + my_glsc3(self%t(:,1), bm1s, vec%t(:,1), nt)
+            if (ifto) alpha = alpha + glsc3(self%t(:,1), bm1s, vec%t(:,1), nt)
             if (ldimt.gt.1) then
                do m = 2,ldimt
-                 if(ifpsco(m-1)) alpha = alpha + my_glsc3(self%t(:,m), bm1s, vec%t(:,m), nt)
+                 if(ifpsco(m-1)) alpha = alpha + glsc3(self%t(:,m), bm1s, vec%t(:,m), nt)
                enddo
             endif
             
@@ -123,14 +130,7 @@
       
       end module nek_vectors
 
-      ! interface 
-      ! real function my_glsc3(a,b,mult,n) result(alpha)
-      ! real, intent(in) :: A(1),B(1),MULT(1)
-      ! integer, intent(in) :: n
-      ! alpha = glsc3(a,b,mult,n)
-      ! end function my_glsc3
-      ! end interface
-      c-----------------------------------------------------------------------
+c-----------------------------------------------------------------------
       subroutine nopcopy(a1,a2,a3,a4,a5, b1,b2,b3,b4,b5)
          implicit none
          include 'SIZE'

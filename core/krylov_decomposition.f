@@ -67,7 +67,7 @@
       endif
 
 !     --> Initialize arrays.
-      call krylov_zero(f) ; alpha = 0.0d0
+      call k_zero(f) ; alpha = 0.0d0
 
 !     --> Arnoldi factorization.
       do mstep = mstart, mend
@@ -83,7 +83,7 @@
          call update_hessenberg_matrix(H(1:mstep+1, 1:mstep), f, Q(1:mstep), mstep)
 
 !     --> Add the residual vector as the new Krylov vector.
-         call krylov_copy(Q(mstep+1), f)
+         call k_copy(Q(mstep+1), f)
 
 !     --> Save checkpoint for restarting/run-time analysis.
          if(ifres) call arnoldi_checkpoint(f%vx, f%vy, f%vz, f%pr, f%t, H(1:mstep+1, 1:mstep), mstep)
@@ -162,18 +162,18 @@
 !     --> Initialize array.
       call rzero(h_vec, k)
 
-      call krylov_norm(beta, f)
+      call k_norm(beta, f)
 
 !     --> Orthonormalize f w.r.t the Krylov basis.
       do i = 1, k
 
 !     --> Copy the i-th Krylov vector to the working arrays.
-         call krylov_copy(wrk, q(i))
+         call k_copy(wrk, q(i))
 
 !     --> Orthogonalize f w.r.t. to q_i.
-         call krylov_inner_product(alpha, f, wrk)
-         call krylov_cmult(wrk, alpha)
-         call krylov_sub2(f, wrk)
+         call k_dot(alpha, f, wrk)
+         call k_cmult(wrk, alpha)
+         call k_sub2(f, wrk)
 
 !     --> Update the corresponding entry in the Hessenberg matrix.
          H(i, k) = alpha
@@ -182,10 +182,10 @@
 
 !     --> Perform full re-orthogonalization (see instability of MGS process).
       do i = 1, k
-         call krylov_copy(wrk, q(i))
-         call krylov_inner_product(alpha, f, wrk)
-         call krylov_cmult(wrk, alpha)
-         call krylov_sub2(f, wrk)
+         call k_copy(wrk, q(i))
+         call k_dot(alpha, f, wrk)
+         call k_cmult(wrk, alpha)
+         call k_sub2(f, wrk)
          H(i, k) = H(i, k) + alpha
          if (nid.EQ.0) then
             write(*, *) "ALPHA REORTH :", alpha
@@ -193,7 +193,7 @@
       enddo
 
 !     --> Normalise the residual vector.
-      call krylov_normalize(f, alpha)
+      call k_normalize(f, alpha)
 
 !     --> Update the Hessenberg matrix.
       H(k+1, k) = alpha
