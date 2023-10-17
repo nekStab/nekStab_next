@@ -20,21 +20,30 @@
       integer, save, public :: nv,nt,n2 ! np conflits with mpi variable -> n2
 
       type, extends(abstract_vector), public :: real_nek_vector
-
             real, dimension(lv) :: vx, vy, vz
             real, dimension(lp) :: pr
             real, dimension(lv,ldimt) :: t
             real :: time
-
       contains
-
             private
             procedure, pass(self), public :: zero
             procedure, pass(self), public :: dot
             procedure, pass(self), public :: scal
             procedure, pass(self), public :: axpby
-
       end type real_nek_vector
+
+      type, extends(abstract_vector), public :: complex_nek_vector
+      complex, dimension(lv) :: vx, vy, vz
+      complex, dimension(lp) :: pr
+      complex, dimension(lv,ldimt) :: t
+      real :: time
+      contains
+      private
+      procedure, pass(self), public :: zero
+      procedure, pass(self), public :: dot
+      procedure, pass(self), public :: scal
+      procedure, pass(self), public :: axpby
+      end type complex_nek_vector
 
       type(real_nek_vector), save, public :: ic_nwt, fc_nwt
       real,save,allocatable,dimension(:, :),public ::uor,vor,wor
@@ -42,6 +51,24 @@
 
 
       contains
+     
+      ! Generic interfaces to overloaded procedures.
+
+            interface zero
+                  module procedure real_zero, complex_zero
+            end interface zero
+
+            interface dot
+                  module procedure real_dot, complex_dot
+            end interface dot
+
+            interface scal
+                  module procedure real_scal, complex_scal
+            end interface scal
+
+            interface axpby
+                  module procedure real_axpby, complex_axpby
+            end interface axpby
    
             ! -----------------------------------------------------------
             ! -----                                                 -----
@@ -49,8 +76,9 @@
             ! -----                                                 -----
             ! -----------------------------------------------------------
             
-            !--> Zero-out a vector.
-            subroutine zero(self)
+            ! Real prodcedures definitions.
+
+            subroutine real_zero(self)
             implicit none
             include 'SIZE'      
             include 'TOTAL'
@@ -58,9 +86,9 @@
             call noprzero(self%vx,self%vy,self%vz,self%pr,self%t)
             self%time = 0.0D0
             return
-            end subroutine zero
+            end subroutine real_zero
             
-            real function dot(self, vec) result(alpha)
+            real function real_dot(self, vec) result(alpha)
             implicit none
             include 'SIZE'      
             include 'TOTAL'
@@ -85,23 +113,18 @@
                  if(ifpsco(m-1)) alpha = alpha + glsc3(self%t(:,m), bm1s, vec%t(:,m), nt)
                enddo
             endif
-            
-            ! --> Time component.
             if ( uparam(1) .eq. 2.1 ) then
                   alpha = alpha + self%time * vec%time
             end if
-            
-            ! --> Check integrity.
             if ( isnan(alpha) ) then 
                   if (nid.eq.0) write(6,*) 'NaN detected in dot product'
                   call nek_end
             end if
             end select
             return
-            end function dot
+            end function real_dot
            
-            ! --> In-place scalar multiplication.
-            subroutine scal(self, alpha)
+            subroutine real_scal(self, alpha)
             implicit none
             include 'SIZE'      
             include 'TOTAL'
@@ -110,10 +133,9 @@
             call nopcmult(self%vx,self%vy,self%vz,self%pr,self%t, alpha)
             self%time = self%time * alpha
             return
-            end subroutine scal
+            end subroutine real_scal
             
-            ! --> axpby interface
-            subroutine axpby(self, alpha, vec, beta)
+            subroutine real_axpby(self, alpha, vec, beta)
             implicit none
             include 'SIZE'      
             include 'TOTAL'
@@ -127,8 +149,82 @@
             call nopadd2(self%vx,self%vy,self%vz,self%pr,self%t, vec%vx,vec%vy,vec%vz,vec%pr,vec%t)
             end select
             return
-            end subroutine axpby
+            end subroutine real_axpby
       
+            ! Complex prodcedures definitions.
+
+            subroutine complex_zero(self)
+            implicit none
+            include 'SIZE'      
+            include 'TOTAL'
+            class(complex_nek_vector), intent(inout) :: self
+            call noprzero(self%vx,self%vy,self%vz,self%pr,self%t)
+            self%time = 0.0D0
+            return
+            end subroutine complex_zero
+            
+            real function complex_dot(self, vec) result(alpha)
+            implicit none
+            include 'SIZE'      
+            include 'TOTAL'
+
+            class(complex_nek_vector), intent(in)      :: self
+            class(abstract_vector), intent(in) :: vec
+            integer m
+            nv = nx1*ny1*nz1*nelv
+            nt = nx1*ny1*nz1*nelt
+            select type(vec)
+            type is(complex_nek_vector)
+
+            ! --> Kinetic energy.
+            alpha = glsc3(self%vx, bm1s, vec%vx, nv)
+            alpha = alpha + glsc3(self%vy, bm1s, vec%vy, nv)
+            if (if3d) alpha = alpha + glsc3(self%vz, bm1s, vec%vz, nv)
+            ! --> Potential energy.
+            if (ifto) alpha = alpha + glsc3(self%t(:,1), bm1s, vec%t(:,1), nt)
+            if (ldimt.gt.1) then
+                  do m = 2,ldimt
+                  if(ifpsco(m-1)) alpha = alpha + glsc3(self%t(:,m), bm1s, vec%t(:,m), nt)
+                  enddo
+            endif
+            if ( uparam(1) .eq. 2.1 ) then
+                  alpha = alpha + self%time * vec%time
+            end if
+            if ( isnan(alpha) ) then 
+                  if (nid.eq.0) write(6,*) 'NaN detected in dot product'
+                  call nek_end
+            end if
+            end select
+            return
+            end function complex_dot
+            
+            subroutine complex_scal(self, alpha)
+            implicit none
+            include 'SIZE'      
+            include 'TOTAL'
+            class(complex_nek_vector), intent(inout) :: self
+            real, intent(in) :: alpha
+            call nopcmult(self%vx,self%vy,self%vz,self%pr,self%t, alpha)
+            self%time = self%time * alpha
+            return
+            end subroutine complex_scal
+            
+            subroutine complex_axpby(self, alpha, vec, beta)
+            implicit none
+            include 'SIZE'      
+            include 'TOTAL'
+            class(complex_nek_vector), intent(inout) :: self
+            class(abstract_vector), intent(in) :: vec
+            real , intent(in) :: alpha, beta
+            select type(vec)
+            type is(complex_nek_vector)
+            call nopcmult(self%vx,self%vy,self%vz,self%pr,self%t, alpha)
+            call nopcmult(vec%vx,vec%vy,vec%vz,vec%pr,vec%t, beta)
+            call nopadd2(self%vx,self%vy,self%vz,self%pr,self%t, vec%vx,vec%vy,vec%vz,vec%pr,vec%t)
+            end select
+            return
+            end subroutine complex_axpby
+
       end module nek_vectors
 
 c-----------------------------------------------------------------------
