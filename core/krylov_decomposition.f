@@ -86,7 +86,7 @@
          call krylov_copy(Q(mstep+1), f)
 
 !     --> Save checkpoint for restarting/run-time analysis.
-         if(ifres) call arnoldi_checkpoint(f%vx, f%vy, f%vz, f%pr, f%theta, H(1:mstep+1, 1:mstep), mstep)
+         if(ifres) call arnoldi_checkpoint(f%vx, f%vy, f%vz, f%pr, f%t, H(1:mstep+1, 1:mstep), mstep)
 
 !     --> Output timing statistics
          eetime1=dnekclock() ; telapsed = (eetime1-eetime0)/3600.0d0 ; tmiss = telapsed*(ksize-mstep)

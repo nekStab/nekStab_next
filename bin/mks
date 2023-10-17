@@ -19,15 +19,18 @@ if command -v mpiifort >/dev/null 2>&1; then
     # Intel compiler found
     echo "Intel compiler found: $(mpiifort -v)"
     FC="mpiifort"
-    CC="mpiicx"
-    FFLAGS+=" -extend-source"
+    CC="mpiicc"
+    FFLAGS+=" -extend-source" # Enables long lines.
+    FFLAGS+=" -fixed" # Enables fixed-form source code, necessary as we mix .f90 files.
     
-    if command -v $(ifort --version | grep ^oneapi) >/dev/null 2>&1; then
+    if [[ $(mpiicx --version 2>&1) =~ "oneapi" ]]; then
         FFLAGS+=" -qmkl"
+        CC="mpiicx"
+        CFLAGS+=" -w"
     else
         FFLAGS+=" -mkl -xHost"
     fi
-    
+
     FFLAGS+=" -g -traceback"
     USR_LFLAGS+=" -I${MKLROOT}/include -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a ${MKLROOT}/lib/intel64/libmkl_sequential.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -lpthread -lm -ldl"
 else
@@ -45,6 +48,7 @@ else
     fi
     FC="mpif90"
     CC="mpicc"
+    FFLAGS+=" -ffixed-form" # Enables fixed-form source code, necessary as we mix .f90 files.
     FFLAGS+=" -ffixed-line-length-none" # Allows for any line length in fixed-form source code.
     FFLAGS+=" -march=native" # Enables all instruction subsets supported by the local machine.
     FFLAGS+=" -g" # Enables debugging information.
@@ -52,13 +56,12 @@ else
 fi
 
 #-------------------------------------------------------------------------------
-# Linking with Lapack and other necessary libraries
+# Linking with LAPACK and BLAS
 #-------------------------------------------------------------------------------
-# Append Lapack and Blas libraries to user linker flags
 # Lapack is a library of linear algebra routines.
 # Blas (Basic Linear Algebra Subprograms) is used by Lapack.
-# export USR_LFLAGS+=" -llapack -lblas"
-# export USR_LFLAGS+=" -lopenblas"
+#export USR_LFLAGS+=" -llapack -lblas"
+export USR_LFLAGS+=" -lopenblas" # OpenBlas is a faster alternative to LAPACK and BLAS
 
 #-------------------------------------------------------------------------------
 # Linking with LightKrylov library
@@ -92,7 +95,20 @@ FFLAGS+=" -DNVERSION=\"'${N_VERSION}'\" -DNSVERSION=\"'${NS_VERSION}'\""
 export FFLAGS
 
 # User-specified object files
-USR="krylov_subspace.o matvec.o krylov_decomposition.o eigensolvers.o lapack_wrapper.o usr_extra.o utils.o IO.o"
+USR="krylov_subspace.o"
+USR+=" nek_vectors.o"
+USR+=" matvec.o"
+USR+=" krylov_decomposition.o"
+USR+=" eigensolvers.o"
+USR+=" lapack_wrapper.o"
+USR+=" fixedp.o"
+USR+=" usr_extra.o"
+USR+=" forcing.o"
+USR+=" utils.o"
+USR+=" IO.o"
+USR+=" postproc.o"
+USR+=" newton_krylov.o"
+USR+=" sensitivity.o"
 export USR
 
 # Output summary of settings

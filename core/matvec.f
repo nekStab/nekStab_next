@@ -8,13 +8,13 @@
 
 !     --> Force only single perturbation mode.
       if (param(31) .gt. 1) then
-         write(6, *) 'not ready for npert >1 : Stopping.'
+         write(6, *) 'nekStab not ready for npert > 1 -- jp loops not yet implemented. Stoppiing.'
          call nek_end
       endif
       param(31) = 1 ; npert = param(31)
 
 !     --> Force deactivate OIFS.
-      if (ifchar) write(6, *) 'OIFS not working with linearized solver.'
+      if (ifchar) write(6, *) 'OIFS not working with linearized solver. Turning it off.'
       ifchar = .false. ; call bcast(ifchar, lsize)
 
 !     --> Enforce CFL target for EXTk
@@ -97,16 +97,10 @@
 
       logical, save :: init
       data init /.false./
-      integer m
 
 !     --> Pass the baseflow to vx, vy, vz
-      call opcopy(vx, vy, vz, ubase, vbase, wbase)
-      if (ifheat) call copy(t(1,1,1,1,1), tbase(1,1,1,1,1),  nx1*ny1*nz1*nelv)
-      if (ldimt.gt.1) then
-            do m = 2,ldimt
-                  call copy(t(1,1,1,1,m), tbase(1,1,1,1,m),  nx1*ny1*nz1*nelv)
-            enddo
-      endif
+      call nopcopy(vx,vy,vz,pr,t, ubase,vbase,wbase,pbase,tbase)
+
       if(ifbf2d .and. if3d)then
          call rzero(vz,nx1*ny1*nz1*nelv);if(nid.eq.0)write(6,*)'Forcing vz=0'
       endif
@@ -123,7 +117,12 @@
 !     --> Direct solver only steady and periodic!
       if (uparam(01) .ge. 3.0 .and. uparam(01) .lt. 3.2 ) then
          evop = 'd'
+         if (iffindiff) then
+             if (nid.EQ.0) write(*, *) "Using the finite-difference approximation of the Fréchet derivative."
+             call forward_finite_difference_map(f, q)
+         else
          call forward_linearized_map(f, q)
+      endif
       endif
 
 !     --> Adjoint solver only steady and periodic!
@@ -181,7 +180,9 @@
 
       logical, save :: init
       data             init /.false./
-      n = nx1*ny1*nz1*nelv
+
+      integer m
+      nt = nx1*ny1*nz1*nelt
 
 !     --> Setup the parameters for the linearized solver.
       ifpert = .true. ; ifadj = .false.
@@ -205,12 +206,12 @@
          else                   ! 2D
             allocate(wor(1,1))
          endif
-         if(ifheat)allocate(tor(lv, nsteps))
+         if(ifto.or.ldimt.gt.1)allocate(tor(lt,nsteps,ldimt))
       endif
 
 !     --> Pass the initial condition for the perturbation.
       call nopcopy(vxp(:,1),vyp(:,1),vzp(:,1),prp(:,1),tp(:,:,1),
-     $     q%vx, q%vy, q%vz, q%pr, q%theta)
+     $     q%vx, q%vy, q%vz, q%pr, q%t)
 
       time = 0.0D+00
       do istep = 1, nsteps
@@ -221,29 +222,178 @@
          call nekstab_usrchk()
          call nek_advance()
 
-         if    (ifstorebase .and.ifbase .and..not.  init)then !storing first time
+         if (ifstorebase.and.ifbase.and..not.init)then !storing first time
             if(nid.eq.0)write(6,*)'storing first series:',istep,'/',nsteps
-            call opcopy(uor(1,istep),vor(1,istep),wor(1,istep),vx,vy,vz)
-            if(ifheat)call copy(tor(1,istep),t(1,1,1,1,1),n)
-         elseif(ifstorebase .and.init .and..not.ifbase)then !just moving in memory
+            call opcopy(uor(:,istep),vor(:,istep),wor(:,istep),vx,vy,vz)
+            if (ifto) call copy(tor(:,istep,1),t(:,:,:,:,1),nt)
+            if (ldimt.gt.1) then
+             do m = 2,ldimt
+               if(ifpsco(m-1)) call copy(tor(:,istep,m),t(:,:,:,:,m),nt)
+             enddo
+            endif
+         elseif(ifstorebase.and.init.and..not.ifbase)then !just moving in memory
             if(nid.eq.0)write(6,*)'using stored baseflow'
-            call opcopy(vx,vy,vz,uor(1,istep),vor(1,istep),wor(1,istep))
-            if(ifheat)call copy(t(1,1,1,1,1),tor(1,istep),n)
-         endif
+            call opcopy(vx,vy,vz,uor(:,istep),vor(:,istep),wor(:,istep))
+            if (ifto) call copy(t(:,:,:,:,1),tor(:,istep,1),nt)
+            if (ldimt.gt.1) then
+             do m = 2,ldimt
+               if(ifpsco(m-1)) call copy(t(:,:,:,:,m),tor(:,istep,m),nt)
+             enddo
+            endif
+          endif
       end do
       if(ifstorebase .and..not.init.and.ifbase)then
          ifbase=.false.;init=.true.
       endif
 
 !     --> Copy the solution.
-      call nopcopy(f%vx,f%vy,f%vz,f%pr,f%theta,
-     $     vxp(:,1),vyp(:,1),vzp(:,1),prp(:,1),tp(:, :,1))
+      call nopcopy(f%vx,f%vy,f%vz,f%pr,f%t,
+     $     vxp(:,1),vyp(:,1),vzp(:,1),prp(:,1),tp(:,:,1))
 
       return
       end subroutine forward_linearized_map
 
 
 !-----------------------------------------------------------------------
+
+
+      subroutine forward_finite_difference_map(f, q)
+
+          ! Approximate the linearized forward map by finite-differencing the nonlinear solver.
+          use krylov_subspace
+          implicit none
+          include 'SIZE'
+          include 'TOTAL'
+          include 'ADJOINT'
+
+          integer, parameter :: findiff_order = 2
+          real, dimension(findiff_order) :: coefs
+          real, dimension(findiff_order) :: amplitudes
+
+          type(krylov_vector) :: q, f, pert
+          type(krylov_vector) :: work
+
+          real :: epsilon0, dummy
+          integer :: i, m
+
+          logical, save :: init
+          data             init /.false./
+          nv = nx1*ny1*nz1*nelv
+
+          ! --> Setup the Nek parameters for the finite-differences approximation.
+          ifpert = .false. ; ifadj = .false.
+          call bcast(ifpert, lsize) ; call bcast(ifadj, lsize)
+
+          call k_zero(f)
+          call k_zero(work)
+          call nopcopy(work%vx, work%vy, work%vz, work%pr, work%t, ubase, vbase, wbase, pbase, tbase)
+
+          call k_norm(dummy, work)
+          epsilon0 = 1e-6 * dummy
+
+          if (findiff_order .eq. 2) then
+              amplitudes(1) = 1 ; amplitudes(2) = -1
+              coefs(1) = 1 ; coefs(2) = -1
+              coefs = coefs / 2.0D+00
+          else if (findiff_order .eq. 4) then
+              amplitudes(1) = 1 ; amplitudes(2) = -1
+              amplitudes(3) = 2 ; amplitudes(4) = -2
+              coefs(1) = 8 ; coefs(2) = -8
+              coefs(3) = -1 ; coefs(4) = 1
+              coefs = coefs/12.0D+00
+          endif
+          amplitudes = amplitudes * epsilon0
+
+          ! --> Turning-off the base flow side-by-side computation.
+          ifbase = .false.
+          if (uparam(01) .eq. 3.11) ifbase = .true. ! activate Floquet
+          if (uparam(01) .eq. 3.31) ifbase = .true. ! activate Floquet for intracycle transient growth
+          if (uparam(01) .eq. 2.1 .or. uparam(01) .eq. 2.2) then
+              init = .true.          ! Use stored baseflow if ifstorebase.
+              ifbase = .true.        ! activate baseflow evolution for UPO.
+          endif
+          if (ifstorebase .and. init) ifbase = .false. ! deactivate ifbase if baseflow stored.
+
+          if(ifstorebase .and.ifbase.and..not.init)then
+              if(nid .eq. 0) write(6,*) 'ALLOCATING ORBIT WITH NSTEPS:',nsteps
+              allocate(uor(lv, nsteps), vor(lv, nsteps))
+              if(if3d)then
+                  allocate(wor(lv,nsteps))
+              else                   ! 2D
+                  allocate(wor(1,1))
+              endif
+              if(ifto.or.ldimt.gt.1)allocate(tor(lt,nsteps,ldimt))
+            endif
+
+          !-----------------------------------------------------------------------
+          !-----                                                             -----
+          !-----     FINITE-DIFFERENCE APPROX. OF THE FRECHET DERIVATIVE     -----
+          !-----                                                             -----
+          !-----------------------------------------------------------------------
+
+          do i = 1, findiff_order
+            
+              ! --> Scale the perturbation.
+              call k_copy(pert, q)
+              call k_cmult(pert, amplitudes(i))
+
+              ! --> Initial condition for the each evaluation.
+              call nopcopy(vx, vy, vz, pr, t, ubase, vbase, wbase, pbase, tbase)
+              call nopadd2(vx, vy, vz, pr, t, pert%vx, pert%vy, pert%vz, pert%pr, pert%t)
+              if(ifbf2d .and. if3d)then
+                  call rzero(vz,nv);if(nid.eq.0)write(6,*)'Forcing vz=0'
+              endif
+
+              ! --> Time-integration of the nonlinear Nek5000 equations.
+              time = 0.0D+00
+              do istep = 1, nsteps
+                  !     --> Output current info to logfile.
+                  if(nid .eq. 0) write(6,"(' DIRECT FD [',I1,'/',I1,']:',I6,'/',I6,' from',I6,'/',I6,' (',I3,')')") i,
+     $ findiff_order, istep, nsteps, mstep, k_dim, schur_cnt
+
+                  ! --> Nek5000 computational core.
+                  call nekstab_usrchk()
+                  call nek_advance()
+
+                  if (i.eq.1.and.ifstorebase.and.ifbase.and..not.init)then !storing first time
+                        if(nid.eq.0)write(6,*)'storing first series:',istep,'/',nsteps
+                        call opcopy(uor(:,istep),vor(:,istep),wor(:,istep),vx,vy,vz)
+                        if (ifto) call copy(tor(:,istep,1),t(:,:,:,:,1),nt)
+                        if (ldimt.gt.1) then
+                         do m = 2,ldimt
+                           if(ifpsco(m-1)) call copy(tor(:,istep,m),t(:,:,:,:,m),nt)
+                         enddo
+                        endif
+                     elseif(i.gt.1.and.ifstorebase.and.init.and..not.ifbase)then !just moving in memory
+                        if(nid.eq.0)write(6,*)'using stored baseflow'
+                        call opcopy(vx,vy,vz,uor(:,istep),vor(:,istep),wor(:,istep))
+                        if (ifto) call copy(t(:,:,:,:,1),tor(:,istep,1),nt)
+                        if (ldimt.gt.1) then
+                         do m = 2,ldimt
+                           if(ifpsco(m-1)) call copy(t(:,:,:,:,m),tor(:,istep,m),nt)
+                         enddo
+                        endif
+                      endif
+                  end do
+                  if(ifstorebase .and..not.init.and.ifbase)then
+                     ifbase=.false.;init=.true.
+                  endif
+
+              !     --> Copy the solution and compute the approximation of the Fréchet dérivative.
+              call nopcopy(work%vx, work%vy, work%vz, work%pr, work%t, vx, vy, vz, pr, t)
+              call k_cmult(work, coefs(i))
+              call k_add2(f, work)
+
+          enddo
+
+          ! --> Rescale the approximate Fréchet derivative with the step size.
+          call k_cmult(f, 1.0D+00/epsilon0)
+
+          return
+      end subroutine forward_finite_difference_map
+
+
+      !-----------------------------------------------------------------------
 
 
       subroutine adjoint_linearized_map(f, q)
@@ -267,7 +417,9 @@
 
       logical, save :: init
       data             init /.false./
-      n = nx1*ny1*nz1*nelv
+
+      integer m
+      nt = nx1*ny1*nz1*nelt
 
 !     --> Setup the parameters for the linearized solver.
       ifpert = .true. ; ifadj = .true.
@@ -287,13 +439,13 @@
          else                   ! 2D
             allocate(wor(1,1))
          endif
-         if(ifheat)allocate(tor(lv, nsteps))
+         if(ifto.or.ldimt.gt.1)allocate(tor(lt,nsteps,ldimt))
       endif
       if(uparam(01) .eq. 3.31)init=.true. ! activate Floquet for intracycle transient growth (base flow already computed)
 
 !     --> Pass the initial condition for the perturbation.
       call nopcopy(vxp(:,1),vyp(:,1),vzp(:,1),prp(:,1),tp(:,:,1),
-     $     q%vx,    q%vy,    q%vz,    q%pr,    q%theta)
+     $     q%vx,    q%vy,    q%vz,    q%pr,    q%t)
 
       time = 0.0D+00
       do istep = 1, nsteps
@@ -306,12 +458,23 @@
 
          if    (ifstorebase .and.ifbase .and..not.  init)then !storing first time
             if(nid.eq.0)write(6,*)'storing first series:',istep,'/',nsteps
-            call opcopy(uor(1,istep),vor(1,istep),wor(1,istep),vx,vy,vz)
-            if(ifheat)call copy(tor(1,istep),t(1,1,1,1,1),n)
+            call opcopy(uor(:,istep),vor(:,istep),wor(:,istep),vx,vy,vz)
+            if (ifto) call copy(tor(:,istep,1),t(:,:,:,:,1),nt)
+            if (ldimt.gt.1) then
+             do m = 2,ldimt
+               if(ifpsco(m-1)) call copy(tor(:,istep,m),t(:,:,:,:,m),nt)
+             enddo
+            endif
+
          elseif(ifstorebase .and.init .and..not.ifbase)then !just moving in memory
             if(nid.eq.0)write(6,*)'using stored baseflow'
-            call opcopy(vx,vy,vz,uor(1,istep),vor(1,istep),wor(1,istep))
-            if(ifheat)call copy(t(1,1,1,1,1),tor(1,istep),n)
+            call opcopy(vx,vy,vz,uor(:,istep),vor(:,istep),wor(:,istep))
+            if (ifto) call copy(t(:,:,:,:,1),tor(:,istep,1),nt)
+            if (ldimt.gt.1) then
+             do m = 2,ldimt
+               if(ifpsco(m-1)) call copy(t(:,:,:,:,m),tor(:,istep,m),nt)
+             enddo
+            endif
          endif
       end do
       if(ifstorebase .and..not.init.and.ifbase)then
@@ -319,7 +482,7 @@
       endif
 
 !     --> Copy the solution.
-      call nopcopy(f%vx,f%vy,f%vz,f%pr,f%theta,
+      call nopcopy(f%vx,f%vy,f%vz,f%pr,f%t,
      $     vxp(:,1),vyp(:,1),vzp(:,1),prp(:,1),tp(:,:,1))
 
       return
@@ -367,8 +530,8 @@
       call adjoint_linearized_map(f, q)
 
 !     --> Evaluate (I - exp(t*L)) * q0.
-      call krylov_sub2(f, q)
-      call krylov_cmult(f, -1.0D+00)
+      call k_sub2(f, q)
+      call k_cmult(f, -1.0D+00)
 
       return
       end subroutine ts_force_sensitivity_map
@@ -395,10 +558,15 @@
 !     ----------------------------------
 
 !     --> Evaluate exp(t*L) * q0.
+      if (iffindiff) then
+          if (nid.EQ.0) write(*, *) "Using the finite-difference approximation of the Fréchet derivative."
+          call forward_finite_difference_map(f, q)
+      else
       call forward_linearized_map(f, q)
+      endif
 
 !     --> Evaluate (exp(t*L) - I) * q0.
-      call krylov_sub2(f, q)
+      call k_sub2(f, q)
 
 !     ----------------------------------
 !     -----     NEWTON FOR UPO     -----
@@ -406,15 +574,15 @@
 
       if ( uparam(1) .eq. 2.1 ) then
 
-         call krylov_zero(bvec)
-         call krylov_zero(btvec)
+         call k_zero(bvec)
+         call k_zero(btvec)
 
          call compute_bvec(bvec, fc_nwt)
-         call krylov_cmult(bvec, q%time)
-         call krylov_add2(f, bvec)
+         call k_cmult(bvec, q%time)
+         call k_add2(f, bvec)
 
          call compute_bvec(btvec, ic_nwt)
-         call krylov_inner_product(f%time, btvec, q)
+         call k_dot(f%time, btvec, q)
 
          if(nid .eq. 0) write(6,*)'Newton period correction:',f%time
 
@@ -450,10 +618,10 @@
       call bcast(ifbase, lsize)
 
 !     --> Pass the initial condition.
-      call nopcopy(vx, vy, vz, pr, t, qbase%vx, qbase%vy, qbase%vz, qbase%pr, qbase%theta)
+      call nopcopy(vx, vy, vz, pr, t, qbase%vx, qbase%vy, qbase%vz, qbase%pr, qbase%t)
       param(10) = qbase%time
       call prepare_linearized_solver
-      call krylov_copy(wrk1, qbase)
+      call k_copy(wrk1, qbase)
 
 !     --> Single time-step to approximate the time-derivative.
       time = 0.0D+00
@@ -461,15 +629,13 @@
          call nekStab_usrchk()
          call nek_advance()
       enddo
-      call nopcopy(wrk2%vx, wrk2%vy, wrk2%vz, wrk2%pr, wrk2%theta,
-     $     vx,      vy,      vz,      pr,      t(1,1,1,1,1))
+      call nopcopy(wrk2%vx, wrk2%vy, wrk2%vz, wrk2%pr, wrk2%t, vx,vy,vz,pr,t)
 
 !     --> Approximate the time-derivative.
-      call krylov_sub2(wrk2, wrk1)
-      call krylov_copy(bvec, wrk2)
-      call krylov_cmult(bvec, 1.0/dt)
+      call k_sub2(wrk2, wrk1)
+      call k_copy(bvec, wrk2)
+      call k_cmult(bvec, 1.0/dt)
       bvec%time = 0.0D+00
-
 
       return
       end subroutine compute_bvec
