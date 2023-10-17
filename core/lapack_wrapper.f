@@ -1,16 +1,3 @@
-! ! Here we include the missing LAPACK routines that are not included in Nek5000.
-! ! We are using the latest version available in https://github.com/Reference-LAPACK/lapack.git
-! ! Run lapack/update_lapack_routines.sh to update the routines.
-!       include 'lapack/dgees.f'
-!       include 'lapack/dlacn2.f'
-!       include 'lapack/dlasy2.f'
-!       include 'lapack/dtrsen.f'
-!       include 'lapack/dtrtrs.f'
-!       include 'lapack/dgels.f'
-!       include 'lapack/dlaexc.f'
-!       include 'lapack/dtrexc.f'
-!       include 'lapack/dtrsyl.f'
-
 !-----------------------------------------------------------------------
 
 

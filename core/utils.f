@@ -305,3 +305,71 @@ c-----------------------------------------------------------------------
       mth_rand = cos(1.e3*sin(1.e3*sin(mth_rand)))
       return
       end function mth_rand
+c-----------------------------------------------------------------------
+      subroutine outpost_vort(ux,uy,uz,name)
+         use krylov_subspace
+         implicit none
+         include 'SIZE'
+         include 'TOTAL'
+         real, intent(in) :: ux(lv),uy(lv),uz(lv)
+         character(len=3)  :: name
+         real wo1(lv),wo2(lv),wo3(lv),vort(lv,3)
+         logical ifto_sav, ifpo_sav
+
+         if(ifvor)then 
+            
+            call comp_vort3(vort, wo1, wo2, ux,uy,uz)
+
+            ifto_sav = ifto
+            ifpo_sav = ifpo
+            ifto = .false.
+            ifpo = .false.
+            call outpost(vort(1,1), vort(1,2), vort(1,3), pr, t, name)
+            ifto = ifto_sav
+            ifpo = ifpo_sav
+         endif
+
+         return
+      end subroutine outpost_vort
+c-----------------------------------------------------------------------
+      subroutine norm_grad(vx_, vy_, vz_, pr_, t_, norma)
+
+         use krylov_subspace
+         implicit none
+         include 'SIZE'
+         include 'TOTAL'
+
+         real, intent(in), dimension(lv) :: vx_, vy_, vz_
+         real, intent(in), dimension(lp) :: pr_
+         real, intent(in), dimension(lt,ldimt) :: t_
+         real, intent(out) :: norma
+
+         real, dimension(lv) :: dudx, dudy, dudz
+         real, dimension(lv) :: dvdx, dvdy, dvdz
+         real, dimension(lv) :: dwdx, dwdy, dwdz
+
+         real :: glsc3
+         nv = nx1 * ny1 * nz1 * nelv
+
+         ! gradient computation
+         call gradm1(dudx, dudy, dudz, vx_, nelv)
+         call gradm1(dvdx, dvdy, dvdz, vy_, nelv)
+         if (if3D) call gradm1(dwdx, dwdy, dwdz, vz_, nelv)
+
+         ! call dsavg(dudx); call dsavg(dudy); call dsavg(dudz)
+         ! call dsavg(dvdx); call dsavg(dvdy); call dsavg(dvdz)
+         ! call dsavg(dwdx); call dsavg(dwdy); call dsavg(dwdz)
+
+         norma = 0.0d0
+
+         norma = norma + glsc3(dudx, bm1s, dudx, nv) + glsc3(dudy, bm1s, dudy, nv)
+         norma = norma + glsc3(dvdx, bm1s, dvdx, nv) + glsc3(dvdy, bm1s, dvdy, nv)
+
+         if (if3D) then 
+            norma = norma + glsc3(dudz, bm1s, dudz, nv)
+            norma = norma + glsc3(dvdz, bm1s, dvdz, nv)
+            norma = norma + glsc3(dwdx, bm1s, dwdx, nv) 
+            norma = norma + glsc3(dwdy, bm1s, dwdy, nv)
+            norma = norma + glsc3(dwdz, bm1s, dwdz, nv)
+         endif 
+      end subroutine norm_grad
