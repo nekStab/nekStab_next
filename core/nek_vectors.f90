@@ -19,7 +19,7 @@
       integer, public, parameter :: lp = lx2*ly2*lz2*lelv ! lp is used for norm -> lp
       integer, save, public :: nv,nt,n2 ! np conflits with mpi variable -> n2
 
-      type, extends(abstract_vector), public :: nek_vector
+      type, extends(abstract_vector), public :: real_nek_vector
 
             real, dimension(lv) :: vx, vy, vz
             real, dimension(lp) :: pr
@@ -34,11 +34,12 @@
             procedure, pass(self), public :: scal
             procedure, pass(self), public :: axpby
 
-      end type nek_vector
+      end type real_nek_vector
 
-      type(nek_vector), save, public :: ic_nwt, fc_nwt
+      type(real_nek_vector), save, public :: ic_nwt, fc_nwt
       real,save,allocatable,dimension(:, :),public ::uor,vor,wor
       real,save,allocatable,dimension(:, :, :),public :: tor
+
 
       contains
    
@@ -53,7 +54,7 @@
             implicit none
             include 'SIZE'      
             include 'TOTAL'
-            class(nek_vector), intent(inout) :: self
+            class(real_nek_vector), intent(inout) :: self
             call noprzero(self%vx,self%vy,self%vz,self%pr,self%t)
             self%time = 0.0D0
             return
@@ -64,13 +65,13 @@
             include 'SIZE'      
             include 'TOTAL'
 
-            class(nek_vector), intent(in)      :: self
+            class(real_nek_vector), intent(in)      :: self
             class(abstract_vector), intent(in) :: vec
             integer m
             nv = nx1*ny1*nz1*nelv
             nt = nx1*ny1*nz1*nelt
             select type(vec)
-            type is(nek_vector)
+            type is(real_nek_vector)
 
             ! --> Kinetic energy.
             alpha = glsc3(self%vx, bm1s, vec%vx, nv)
@@ -104,7 +105,7 @@
             implicit none
             include 'SIZE'      
             include 'TOTAL'
-            class(nek_vector), intent(inout) :: self
+            class(real_nek_vector), intent(inout) :: self
             real, intent(in) :: alpha
             call nopcmult(self%vx,self%vy,self%vz,self%pr,self%t, alpha)
             self%time = self%time * alpha
@@ -113,19 +114,19 @@
             
             ! --> axpby interface
             subroutine axpby(self, alpha, vec, beta)
-                  implicit none
-                  include 'SIZE'      
-                  include 'TOTAL'
-                  class(nek_vector), intent(inout) :: self
-                  class(abstract_vector), intent(in) :: vec
-                  real , intent(in) :: alpha, beta
-                  select type(vec)
-                  type is(nek_vector)
-                  call nopcmult(self%vx,self%vy,self%vz,self%pr,self%t, alpha)
-                  call nopcmult(vec%vx,vec%vy,vec%vz,vec%pr,vec%t, beta)
-                  call nopadd2(self%vx,self%vy,self%vz,self%pr,self%t, vec%vx,vec%vy,vec%vz,vec%pr,vec%t)
-                  end select
-                  return
+            implicit none
+            include 'SIZE'      
+            include 'TOTAL'
+            class(real_nek_vector), intent(inout) :: self
+            class(abstract_vector), intent(in) :: vec
+            real , intent(in) :: alpha, beta
+            select type(vec)
+            type is(real_nek_vector)
+            call nopcmult(self%vx,self%vy,self%vz,self%pr,self%t, alpha)
+            call nopcmult(vec%vx,vec%vy,vec%vz,vec%pr,vec%t, beta)
+            call nopadd2(self%vx,self%vy,self%vz,self%pr,self%t, vec%vx,vec%vy,vec%vz,vec%pr,vec%t)
+            end select
+            return
             end subroutine axpby
       
       end module nek_vectors
