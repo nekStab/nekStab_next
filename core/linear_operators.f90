@@ -1,6 +1,8 @@
         module LinearOperators
+
         use lightkrylov, krylov_atol => atol
         use NekVectors
+        
         implicit none
         include 'SIZE'
         include 'TOTAL'
@@ -22,7 +24,6 @@
 
         contains
 
-        ! Subroutine for setting up the linear solver
         subroutine setupLinearSolver(solver_type,init)
         
         implicit none
@@ -39,7 +40,7 @@
 
         ! turn on adjoint solver if needed
         ifadj = .false.
-        if (solver_type == 'adjoint') ifadj = .true.
+        if (solver_type == 'ADJOINT') ifadj = .true.
         call bcast(ifadj, lsize)
 
         ! turn off nonlinear solver
@@ -50,7 +51,7 @@
             
         else if (uparam(01) == 3.31) then
 
-            if (solver_type == 'adjoint') then
+            if (solver_type == 'ADJOINT') then
                 init = .true.
             endif
 
@@ -85,7 +86,7 @@
         ! activate Floquet for intracycle transient growth
         ! in the direct/adjoint mode at this point
         ! the nonlinear solution is already stored
-        if (solver_type == 'adjoint' .and. uparam(01) .eq. 3.31) init=.true. 
+        if (solver_type == 'ADJOINT' .and. uparam(01) .eq. 3.31) init=.true. 
 
         end subroutine
 
@@ -170,8 +171,8 @@
         select type (vec_out)
         type is (real_nek_vector)
 
-        call setupLinearSolver('forward', init)
-        call nekstab_solver('forward', init, vec_in, vec_out)
+        call setupLinearSolver('DIRECT', init)
+        call nekstab_solver('DIRECT', init, vec_in, vec_out)
 
         end select
         end select
@@ -197,8 +198,8 @@
         select type (vec_out)
         type is (real_nek_vector)
 
-        call setupLinearSolver('adjoint', init)
-        call nekstab_solver('adjoint', init, vec_in, vec_out)
+        call setupLinearSolver('ADJOINT', init)
+        call nekstab_solver('ADJOINT', init, vec_in, vec_out)
 
         end select
         end select
