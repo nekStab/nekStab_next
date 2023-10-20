@@ -16,8 +16,8 @@
         real :: t
         contains
         private
-        procedure, pass(self), public :: matvec => direct_linearized_map
-        procedure, pass(self), public :: rmatvec => adjoint_linearized_map
+        procedure, pass(self), public :: matvec => direct_solver
+        procedure, pass(self), public :: rmatvec => adjoint_solver
         end type exponential_prop
 
         contains
@@ -151,7 +151,7 @@
 
         end subroutine nekstab_solver
 
-        subroutine forward_linearized_map(self, vec_in, vec_out)
+        subroutine direct_solver(self, vec_in, vec_out)
 
         implicit none
         include 'SIZE'
@@ -176,9 +176,9 @@
         end select
         end select
         return
-        end subroutine forward_linearized_map
+        end subroutine direct_solver
 
-        subroutine adjoint_linearized_map(self, vec_in, vec_out)
+        subroutine adjoint_solver(self, vec_in, vec_out)
 
         implicit none
         include 'SIZE'
@@ -203,6 +203,6 @@
         end select
         end select
         return
-        end subroutine adjoint_linearized_map
+        end subroutine adjoint_solver
 
         end module LinearOperators
