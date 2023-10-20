@@ -102,7 +102,8 @@
       call nopcopy(vx,vy,vz,pr,t, ubase,vbase,wbase,pbase,tbase)
 
       if(ifbf2d .and. if3d)then
-         call rzero(vz,nx1*ny1*nz1*nelv);if(nid.eq.0)write(6,*)'Forcing vz=0'
+         call rzero(vz,nx1*ny1*nz1*nelv)
+         if(nid.eq.0)write(6,*)'Forcing vz=0'
       endif
 
 !     --> Standard setup for the linearized solver.

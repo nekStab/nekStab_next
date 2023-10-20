@@ -46,3 +46,4 @@ examples/cylinder/postprocessing/steady_force_sensitivity/U
 .DS_Store
 Nek5000
 LightKrylov
+*.smod

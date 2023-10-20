@@ -60,8 +60,12 @@ fi
 #-------------------------------------------------------------------------------
 # Lapack is a library of linear algebra routines.
 # Blas (Basic Linear Algebra Subprograms) is used by Lapack.
-#export USR_LFLAGS+=" -llapack -lblas"
-export USR_LFLAGS+=" -lopenblas" # OpenBlas is a faster alternative to LAPACK and BLAS
+
+export USR_LFLAGS+=" -llapack -lblas"
+
+#export USR_LFLAGS+=" -L/usr/local/opt/openblas/lib"
+#export FFLAGS+=" -I/usr/local/opt/openblas/include"
+#export USR_LFLAGS+=" -lopenblas" # OpenBlas is a faster alternative to LAPACK and BLAS
 
 #-------------------------------------------------------------------------------
 # Linking with LightKrylov library
@@ -97,6 +101,7 @@ export FFLAGS
 # User-specified object files
 USR="krylov_subspace.o"
 USR+=" nek_vectors.o"
+USR+=" linear_operators.o"
 USR+=" matvec.o"
 USR+=" krylov_decomposition.o"
 USR+=" eigensolvers.o"

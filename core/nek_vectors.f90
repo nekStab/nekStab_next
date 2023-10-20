@@ -1,4 +1,4 @@
-      module nek_vectors
+      module NekVectors
 
       use LightKrylov
       implicit none
@@ -182,7 +182,7 @@
             return
             end subroutine cmplx_axpby
 
-      end module nek_vectors
+      end module NekVectors
 
 c-----------------------------------------------------------------------
 
