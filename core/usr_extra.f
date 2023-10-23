@@ -166,7 +166,7 @@ c-----------------------------------------------------------------------
          call nekStab_comment   ! print comments
          call nekStab_energy   (vx,vy,vz,t,'total_energy.dat',glob_skip)
          call nekStab_enstrophy(vx,vy,vz,t,'total_enstrophy.dat',glob_skip)
-         if (lastep .eq. 1) call nekStab_end
+         if (lastep .eq. 1) call nek_end
 
       case(1)                   ! fixed points computation
 
@@ -188,7 +188,7 @@ c-----------------------------------------------------------------------
             call TDF
          endif
 
-         if(ifbfcv)call nekStab_end
+         if(ifbfcv)call nek_end
 
       case(2) ! Newton-Krylov solver
 
@@ -213,7 +213,7 @@ c-----------------------------------------------------------------------
          
          ! Proceed with Newton-Krylov computation
          call newton_krylov
-         call nekStab_end
+         call nek_end
 
       case(3)                   ! eigenvalue problem
 
@@ -247,7 +247,7 @@ c-----------------------------------------------------------------------
 
               call linear_stability_analysis
               !call krylov_schur
-              call nekStab_end
+              call nek_end
 
       case(4)                   ! in postprocessing.f
 
@@ -757,29 +757,3 @@ c-----------------------------------------------------------------------
       return
       end subroutine zero_crossing
 c-----------------------------------------------------------------------
-      subroutine nekStab_end
-         implicit none
-         include 'SIZE'
-         include 'TOTAL'
-         logical :: file_exists
-         character(len=100) :: command, filename
-
-         ! if(nid.eq.0) then 
-
-         !    print*, ' '
-         !    print*, ' '
-         !    print*, 'Code finished. Checking for next simulation...'
-
-         !    filename = "check_next.py"
-         !    inquire(file=filename, exist=file_exists)
-
-         !    if (file_exists) then
-         !       command = "python3 check_next.py >> checklog"
-         !       call EXECUTE_COMMAND_LINE(command)
-         !    else
-         !       print*, trim(filename), ' not found.'
-         !    end if
-         ! endif ! nid.eq.0
-
-         call nek_end
-      end subroutine nekStab_end
