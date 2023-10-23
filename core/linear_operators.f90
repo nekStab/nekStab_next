@@ -24,6 +24,61 @@
 
         contains
 
+
+        subroutine direct_solver(self, vec_in, vec_out)
+
+            implicit none
+            include 'SIZE'
+            include 'TOTAL'
+            include 'ADJOINT'
+    
+            class(exponential_prop), intent(in)  :: self
+            class(abstract_vector), intent(in)  :: vec_in
+            class(abstract_vector), intent(out) :: vec_out
+            
+            logical, save :: init
+            data             init /.false./
+    
+            select type (vec_in)
+            type is (real_nek_vector)
+            select type (vec_out)
+            type is (real_nek_vector)
+    
+            call setupLinearSolver('DIRECT', init)
+            call nekstab_solver('DIRECT', init, vec_in, vec_out)
+    
+            end select
+            end select
+            return
+            end subroutine direct_solver
+    
+            subroutine adjoint_solver(self, vec_in, vec_out)
+    
+            implicit none
+            include 'SIZE'
+            include 'TOTAL'
+            include 'ADJOINT'
+    
+            class(exponential_prop), intent(in)  :: self
+            class(abstract_vector), intent(in)  :: vec_in
+            class(abstract_vector), intent(out) :: vec_out
+            
+            logical, save :: init
+            data             init /.false./
+    
+            select type (vec_in)
+            type is (real_nek_vector)
+            select type (vec_out)
+            type is (real_nek_vector)
+    
+            call setupLinearSolver('ADJOINT', init)
+            call nekstab_solver('ADJOINT', init, vec_in, vec_out)
+    
+            end select
+            end select
+            return
+            end subroutine adjoint_solver
+    
         subroutine setupLinearSolver(solver_type,init)
         
         implicit none
@@ -46,10 +101,10 @@
         ! turn off nonlinear solver
         ifbase = .false.
 
-        if (uparam(01) == 3.11 .or. uparam(01) == 3.21) then
+        if (isFloquetDirect .or. isFloquetAdjoint) then
             ifbase = .true.
             
-        else if (uparam(01) == 3.31) then
+        else if (isFloquetDirectAdjoint) then
 
             if (solver_type == 'ADJOINT') then
                 init = .true.
@@ -57,7 +112,8 @@
 
             ifbase = .true.
             
-        else if (uparam(01) == 2.1 .or. uparam(01) == 2.2) then
+        else if (isNewtonPO .or. isNewtonPO_T) then
+
             init = .true.
             ifbase = .true.
             
@@ -86,7 +142,7 @@
         ! activate Floquet for intracycle transient growth
         ! in the direct/adjoint mode at this point
         ! the nonlinear solution is already stored
-        if (solver_type == 'ADJOINT' .and. uparam(01) .eq. 3.31) init=.true. 
+        if (solver_type == 'ADJOINT' .and. isFloquetDirectAdjoint) init=.true. 
 
         end subroutine
 
@@ -151,59 +207,5 @@
         call nopcopy(out%vx,out%vy,out%vz,out%pr,out%t, vxp(:,1),vyp(:,1),vzp(:,1),prp(:,1),tp(:,:,1))
 
         end subroutine nekstab_solver
-
-        subroutine direct_solver(self, vec_in, vec_out)
-
-        implicit none
-        include 'SIZE'
-        include 'TOTAL'
-        include 'ADJOINT'
-
-        class(exponential_prop), intent(in)  :: self
-        class(abstract_vector), intent(in)  :: vec_in
-        class(abstract_vector), intent(out) :: vec_out
-        
-        logical, save :: init
-        data             init /.false./
-
-        select type (vec_in)
-        type is (real_nek_vector)
-        select type (vec_out)
-        type is (real_nek_vector)
-
-        call setupLinearSolver('DIRECT', init)
-        call nekstab_solver('DIRECT', init, vec_in, vec_out)
-
-        end select
-        end select
-        return
-        end subroutine direct_solver
-
-        subroutine adjoint_solver(self, vec_in, vec_out)
-
-        implicit none
-        include 'SIZE'
-        include 'TOTAL'
-        include 'ADJOINT'
-
-        class(exponential_prop), intent(in)  :: self
-        class(abstract_vector), intent(in)  :: vec_in
-        class(abstract_vector), intent(out) :: vec_out
-        
-        logical, save :: init
-        data             init /.false./
-
-        select type (vec_in)
-        type is (real_nek_vector)
-        select type (vec_out)
-        type is (real_nek_vector)
-
-        call setupLinearSolver('ADJOINT', init)
-        call nekstab_solver('ADJOINT', init, vec_in, vec_out)
-
-        end select
-        end select
-        return
-        end subroutine adjoint_solver
 
         end module LinearOperators

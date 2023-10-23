@@ -192,41 +192,62 @@ c-----------------------------------------------------------------------
 
       case(2) ! Newton-Krylov solver
 
-!     sanity check
-         if(uparam(1).eq.2.0)then
-            if(nid.eq.0)write(6,*)'Newton-Krylov for fixed points...'
-         elseif(uparam(1).eq.2.1)then
-            if(nid.eq.0)write(6,*)'Newton-Krylov for UPOs...'
-         elseif(uparam(1).eq.2.2)then
-            if(nid.eq.0)write(6,*)'Newton-Krylov for forced UPOs...'
-         else
-            if(nid.eq.0)write(6,*)'NEWTON MODE NOT CORRECTLY SPECIFIED!'
-            call nek_end
+         ! Initialize flags based on the value of uparam(1)
+         isNewtonFP  = (uparam(1) .eq. 2.0)
+         isNewtonPO  = (uparam(1) .eq. 2.1)
+         isNewtonPO_T = (uparam(1) .eq. 2.2)
+         
+         ! Conditional statements for each Newton-Krylov case
+         if (nid .eq. 0) then
+             if (isNewtonFP) then
+                 write(6,*) 'Newton-Krylov for fixed points...'
+             elseif (isNewtonPO) then
+                 write(6,*) 'Newton-Krylov for UPOs...'
+             elseif (isNewtonPO_T) then
+                 write(6,*) 'Newton-Krylov for forced UPOs...'
+             else
+                 write(6,*) 'NEWTON MODE NOT CORRECTLY SPECIFIED!'
+                 call nek_end
+             endif
          endif
+         
+         ! Proceed with Newton-Krylov computation
          call newton_krylov
          call nekStab_end
 
       case(3)                   ! eigenvalue problem
 
-!     sanity check
-         if    (uparam(1).eq.3.1)then
-            if(nid.eq.0)write(6,*)'Krylov-Schur for direct LNSE...'
-         elseif(uparam(1).eq.3.11)then
-            if(nid.eq.0)write(6,*)'Krylov-Schur for direct LNSE in Floquet...'
-         elseif(uparam(1).eq.3.2)then
-            if(nid.eq.0)write(6,*)'Krylov-Schur for adjoint LNSE...'
-         elseif(uparam(1).eq.3.21)then
-            if(nid.eq.0)write(6,*)'Krylov-Schur for adjoint LNSE in Floquet...'           
-         elseif(uparam(1).eq.3.3)then
-            if(nid.eq.0)write(6,*)'Krylov-Schur for transient growth...'
-         elseif(uparam(1).eq.3.31)then
-            if(nid.eq.0)write(6,*)'Krylov-Schur for transient growth in Floquet...'
-         else
-            if(nid.eq.0)write(6,*)'Krylov-Schur MODE NOT CORRECTLY SPECIFIED!'
-            call nek_end
-         endif
-         call krylov_schur
-         call nekStab_end
+         isDirect = (uparam(1) .eq. 3.1)
+         isAdjoint = (uparam(1) .eq. 3.2)
+         isDirectAdjoint = (uparam(1) .eq. 3.3)
+
+         isFloquetDirect = (uparam(1) .eq. 3.11)
+         isFloquetAdjoint = (uparam(1) .eq. 3.21)
+         isFloquetDirectAdjoint = (uparam(1) .eq. 3.31)
+
+         ! Conditional statements for each case
+            if (nid .eq. 0) then
+               if (isDirect) then
+                   write(6,*) 'Krylov-Schur for Direct LNSE...'
+               elseif (isAdjoint) then
+                   write(6,*) 'Krylov-Schur for Adjoint LNSE...'
+               elseif (isDirectAdjoint) then
+                   write(6,*) 'Krylov-Schur for Direct-Adjoint LNSE...'
+               elseif (isFloquetDirect) then
+                   write(6,*) 'Krylov-Schur for Direct LNSE in Floquet...'
+               elseif (isFloquetAdjoint) then
+                   write(6,*) 'Krylov-Schur for Adjoint LNSE in Floquet...'
+               elseif (isFloquetDirectAdjoint) then
+                   write(6,*) 'Krylov-Schur for Direct-Adjoint LNSE in Floquet...'
+               else
+                   write(6,*) 'Unrecognized option...'
+                   call nek_end
+               endif ! isDirect
+              endif ! nid == 0
+
+              call linear_stability_analysis
+              !call krylov_schur
+              call nekStab_end
 
       case(4)                   ! in postprocessing.f
 

@@ -9,6 +9,14 @@
       common /nStab_logical/ ifbfcv,ifres,ifldbf,ifbf2D,ifseed_nois,ifseed_symm,
      $                       ifseed_load,ifvor,ifvox,ifstorebase,ifdyntol, iffindiff
 
+      logical :: isDirect, isAdjoint, isDirectAdjoint
+      logical :: isFloquetDirect, isFloquetAdjoint, isFloquetDirectAdjoint
+      logical :: isNewtonFP, isNewtonPO, isNewtonPO_T
+
+      common /nStab_logical/ isDirect, isAdjoint, isDirectAdjoint
+      common /nStab_logical/ isFloquetDirect, isFloquetAdjoint, isFloquetDirectAdjoint
+      common /nStab_logical/ isNewtonFP, isNewtonPO, isNewtonPO_T
+
       real                eigen_tol,schur_del,glmax_qc,dtmaxx,xmn,xmx,ymn,ymx,zmn,zmx
       common /nStab_real/ eigen_tol,schur_del,glmax_qc,dtmaxx,xmn,xmx,ymn,ymx,zmn,zmx
 

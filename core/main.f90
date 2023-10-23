@@ -1,259 +1,180 @@
+        ! this is the new krylov_schur routine
+        subroutine linear_stability_analysis
 
-    ! this is the new krylov_schur routine
-subroutine linear_stability_analysis(adjoint)
+        use NekVectors
+        use LinearOperators
+        use LightKrylov, krylov_atol => atol
 
-    use LinearOperators
+        implicit none
+        include 'SIZE'
+        include 'TOTAL'
 
-    !> Exponential Propagator.
-    class(exponential_prop), allocatable :: A
+        !> Exponential Propagator.
+        class(exponential_prop), allocatable :: A
+
+        !> Krylov subspace.
+        class(real_nek_vector), allocatable :: X(:)
+
+        !> Coordinates of the eigenvectors in the Krylov basis.
+        !complex*16, allocatable, dimension(:,:) :: vecs
+        complex :: eigvecs(k_dim, k_dim)
+
+        !> Eigenvalues.
+        complex :: eigvals(k_dim)
+
+        !> Residual.
+        real :: residuals(k_dim)
+
+        !> Information flag.
+        integer :: info
+
+        !> Miscellaneous.
+        integer :: i, j, k
+        real :: alpha
+        class(abstract_vector), allocatable :: wrk
+        
+        character(len=20) :: fich1, fich2, fich3, fmt2, fmt3, fmt4, fmt5, fmt6
+        character(len=30) :: filename
+
+        !>
+        !A = exponential_prop(1.0_wp)
+
+        ! --> Initialize Krylov subspace.
+        allocate (X(1:k_dim + 1))
+        ! call random_number(X(1)%x)
+
+        ! alpha = X(1)%norm()
+        ! call X(1)%scal(1.0_wp / alpha)
+
+        !     ----- Loading baseflow from disk (optional) -----
+
+        time = 0.0d0 ! might be overwritten by load_fld
+
+        if (ifldbf) then !skip loading if single run
+
+        if (nid .eq. 0) write (*, *) 'Loading base flow from disk:'
+
+        write (filename, '(a,a,a)') 'BF_', trim(SESSION), '0.f00001'
+        call load_fld(filename)
+
+        if (nid .eq. 0) write (*, *) ' Number os scalars found (npscal): ', npscal
+        if (nid .eq. 0) write (*, *) ' ifldbf done.'
+
+        else
+
+        if (nid .eq. 0) write (*, *) 'Baseflow prescribed by the useric function in the .usr'
+
+        end if
+
+        !     ----- Save baseflow to disk (recommended) -----
+        call nopcopy(ubase, vbase, wbase, pbase, tbase, vx, vy, vz, pr, t)
+
+        !     ----- Prepare stability parameters -----
+        if (istep .eq. 0 .and. (isFloquetDirect .or. isFloquetAdjoint .or. isFloquetDirectAdjoint)) then
+            param(10) = time  ! Update UPO period in the field
+            if (nid .eq. 0) then
+                write (6, *) 'Floquet mode activated.'
+                write (6, *) 'Getting endTime from file: endTime = ', param(10)
+            end if
+        end if
+
+        ! Broadcast the UPO period to all processors
+        call bcast(param(10), wdsize)
+
+        !     ----- First vector (new from noise or restart) -----
+
+        ! if (uparam(2) .eq. 0) then
+
+        ! if (nid .eq. 0) write (6, *) 'Starting first Arnoldi decomposition...'
+
+        ! !     ----- Creates seed vector for the Krylov subspace -----
+
+        ! if (ifseed_nois) then    ! noise as initial seed
+
+        !    if(nid.eq.0)write(6,*)'Filling fields with noise...'
+        !    call op_add_noise(wrk2%vx,wrk2%vy,wrk2%vz)
+        !    if (ifto) call add_noise_scal(wrk2%t(:,1),9.0e4, 3.0e3, 4.0e5)
+        !    if (ldimt.gt.1) then
+        !     do m = 2, ldimt
+        !      if(ifpsco(m-1)) call add_noise_scal(wrk2%t(:,1),9.0e1*m, 3.0e2*m, 4.0e1*m)
+        !     enddo
+        !    endif
+        !    call k_normalize(wrk2, alpha)
+        !    call matvec(wrk, wrk2)
+
+        ! elseif(ifseed_symm)then ! symmetry initial seed
+        ! This should be loaded in useric instead for specific cases !
+        !    if(nid.eq.0)write(6,*)'Enforcing symmetric seed perturb...'
+        !    call add_symmetric_seed(wrk%vx,wrk%vy,wrk%vz,wrk%t(:,1))
+
+        ! elseif (ifseed_load) then ! loading initial seed (e.g. dRe )
+
+        ! if (uparam(01) .ge. 3.0 .and. uparam(01) .lt. 3.2) then
+        ! write (filename, '(a,a,a)') 'dRe', trim(SESSION), '0.f00001'
+
+        ! elseif (uparam(01) .ge. 3.2 .and. uparam(01) .lt. 3.3) then
+        ! write (filename, '(a,a,a)') 'aRe', trim(SESSION), '0.f00001'
+        ! end if
+
+        ! if (nid .eq. 0) write (*, *) 'Load real part of mode 1 as seed: ', filename
+        ! !    call load_fld(filename)
+        ! !    call nopcopy(wrk2%vx,wrk2%vy,wrk2%vz,wrk2%pr,wrk2%t, vx,vy,vz,pr,t)
+        ! !    call k_normalize(wrk2, alpha)
+        ! !    call matvec(wrk, wrk2)
+
+        ! else ! base flow is prescribed in usric
+
+        ! !    call nopcopy(wrk%vx,wrk%vy,wrk%vz,wrk%pr,wrk%t, ubase,vbase,wbase,pbase,tbase)
+        ! !    call k_normalize(wrk, alpha)
+
+        ! end if
+
+        ! --> Eigenvalue analysis.
+        if (isDirect .or. isFloquetDirect) then
+
+            evop = 'd'
+            call eigs(A, X, eigvecs, eigvals, residuals, info, nev=schur_tgt, tol=eigen_tol, verbosity=.true., transpose=.false.)
+        
+        elseif (isAdjoint .or. isFloquetAdjoint) then
     
-    !> Krylov subspace.
-    integer, parameter :: kdim = int(uparam(7))
-
-    class(real_nek_vector), allocatable :: X(:)
-    !> Coordinates of the eigenvectors in the Krylov basis.
-    complex :: v(kdim, kdim)
-
-    !> Eigenvalues.
-    complex :: lambda(kdim)
+            evop = 'a'
+            call eigs(A, X, eigvecs, eigvals, residuals, info, nev=schur_tgt, tol=eigen_tol, verbosity=.true. ,transpose=.true.)
     
-    !> Residual.
-    real :: residuals(kdim)
-
-    !> Information flag.
-    integer :: info
-
-    !> Miscellaneous.
-    integer :: i, j, k
-    real :: alpha
-    class(abstract_vector), allocatable :: wrk
-    complex :: eigenvector(2*nx)
-    logical :: adjoint
-    character(len=20) :: fich1,fich2,fich3,fmt2,fmt3,fmt4,fmt5,fmt6
-
-    !>
-    A = exponential_prop(1.0_wp)
-
-    ! --> Initialize Krylov subspace.
-    allocate(X(1:kdim+1)) ; call random_number(X(1)%x)
-    alpha = X(1)%norm() ; call X(1)%scal(1.0_wp / alpha)
-
-    !     ----- Allocate arrays -----
-    allocate(Q(k_dim+1))
-    allocate(H(k_dim+1,k_dim),b_vec(1,k_dim),vals(k_dim),vecs(k_dim,k_dim),residual(k_dim))
-
-    time   = 0.0d0
-    H(:,:)  = 0.0d0; b_vec  = 0.0d0 ; residual = 0.0d0
-    call k_zero(Q(1:k_dim+1))
-
-!     ----- Loading baseflow from disk (optional) -----
-
-    if(ifldbf)then            !skip loading if single run
-       if(nid.eq.0)write(*,*)'Loading base flow from disk:'
-       write(filename,'(a,a,a)')'BF_',trim(SESSION),'0.f00001'
-       call load_fld(filename)
-       if(nid.eq.0)write(*,*)' Number os scalars found (npscal): ',npscal
-       if(nid.eq.0)write(*,*)' ifldbf done.'
-    else
-       if(nid.eq.0)write(*,*)'Baseflow prescribed by the useric function in the .usr'
-    endif
-
-!     ----- Save baseflow to disk (recommended) -----
-    call nopcopy(ubase,vbase,wbase,pbase,tbase, vx,vy,vz,pr,t)
-
-    ! --> Eigenvalue analysis.
-    if (adjoint.eqv..true.) then
-       evop = 'a'
-       call eigs(A, X, v, lambda, residuals, info, nev=schur_tgt, transpose=.true.)
-    else
-       evop = 'd'
-       call eigs(A, X, v, lambda, residuals, info, nev=schur_tgt, transpose=.false.)
-    endif
-
-    fich1 = 'Spectre_H' // trim(evop) // '.dat'
-    fich2 = 'Spectre_NS' // trim(evop) // '.dat'
-    fich3 = 'Spectre_NS' // trim(evop) // '_conv.dat'
-    
-    if (nid == 0) then
-      open(unit=10, file=fich1, form='formatted')
-      open(unit=20, file=fich2, form='formatted')
-      open(unit=30, file=fich3, form='formatted')
-    endif
+        end if
 
 
-    !outpost the eigenspectrum of the Hessenberg matrix.
-    if (nid.eq.0) then
-        do i = 1, size(lambda)
-            write(10,"(3E15.7)") real(lambda(i)), aimag(lambda(i)), residuals(i)
-        enddo
-        close(10)
-    endif
+        fich1 = 'Spectre_H'//trim(evop)//'.dat'
+        fich2 = 'Spectre_NS'//trim(evop)//'.dat'
+        fich3 = 'Spectre_NS'//trim(evop)//'_conv.dat'
 
-    ! --> Transform eigenspectrum. (old outpost_ks)
-    lambda = log(lambda) / A%t ! A%t is the sampling period dt*nsteps
+        if (nid == 0) then
+            open (unit=10, file=fich1, form='formatted')
+            open (unit=20, file=fich2, form='formatted')
+            open (unit=30, file=fich3, form='formatted')
+            !outpost the eigenspectrum of the Hessenberg matrix.
+            do i = 1, size(eigvals)
+            write (10, "(3E15.7)") real(eigvals(i)), aimag(eigvals(i)), residuals(i)
+            end do
+            close (10)
+        end if
 
-    ! --> Save the eigenspectrum.
-    if (nid.eq.0) then
-        do i = 1, size(lambda)
-            write(20, "(3E15.7)") real(lambda(i)), aimag(lambda(i)), residuals(i)
-        enddo
-        close(20)
-    endif
+        ! --> Transform eigenspectrum. (old outpost_ks)
+        eigvals = log(eigvals)/A%t ! A%t is the sampling period dt*nsteps
 
-    ! --> Save leading eigenvector.
-    call get_vec(wrk, X(1:kdim), real(v(:, 1)))
-    select type(wrk)
-    type is(real_nek_vector)
-       !call save_npy("Leading_eigenvector.npy", wrk%x)
-    end select
+        ! --> Save the eigenspectrum.
+        if (nid .eq. 0) then
+            do i = 1, size(eigvals)
+            write (20, "(3E15.7)") real(eigvals(i)), aimag(eigvals(i)), residuals(i)
+            end do
+            close (20)
+        end if
 
-    return
-  end subroutine linear_stability_analysis
+        ! --> Save leading eigenvector.
+        call get_vec(wrk, X(1:k_dim), real(eigvecs(:, 1)))
+        ! select type(wrk)
+        ! type is(real_nek_vector)
+        ! !call save_npy("Leading_eigenvector.npy", wrk%x)
+        ! end select
 
-!   subroutine transient_growth(times)
-!     !> Time instants at which to compute the optimal growth.
-!     real, intent(in) :: times(:)
-!     !> Exponential propagator.
-!     type(exponential_prop), allocatable :: A
-!     !> Krylov subspaces.
-!     integer, parameter :: kdim = 2*nx
-!     type(vector), allocatable :: U(:), V(:)
-!     !> Singular triplets.
-!     real :: sigma(kdim), uvecs(kdim, kdim), vvecs(kdim, kdim)
-!     real :: residuals(kdim)
-!     !> Information flag.
-!     integer :: info
-!     !> Gains.
-!     real :: gains(size(times), 5)
-!     !> Miscellaneous.
-!     integer :: i, j, k
-!     real :: alpha
-
-!     ! --> Initialize variables.
-!     allocate(U(kdim+1)) ; allocate(V(kdim+1))
-!     A = exponential_prop(0.0_wp)
-!     gains = 0.0_wp ; sigma = 0.0_wp ; uvecs = 0.0_wp ; vvecs = 0.0_wp ; residuals = 0.0_wp
-
-!     do i = 1, size(times)
-
-!        write(*, *) "--: Integration time : ", times(i)
-
-!        !> Set integration time for the exponential propagator.
-!        A%t = times(i)
-
-!        !> Initialize Krylov subspaces.
-!        do j = 1, size(U)
-!           call U(j)%zero() ; call V(j)%zero()
-!        enddo
-!        call random_number(U(1)%x) ; alpha = U(1)%norm() ; call U(1)%scal(1.0_wp / alpha)
-
-!        !> Singular value computation.
-!        call svds(A, U, V, uvecs, vvecs, sigma, residuals, info, nev=10, tolerance=rtol)
-
-!        !> Store computed gains.
-!        do k = 1, size(gains, 2)
-!           gains(i, k) = sigma(2*k-1)**2
-!        enddo
-!        write(*, *) "    Optimal gains :", gains(i, :), sigma(1:2*size(gains, 2))**2
-!        write(*, *)
-!     enddo
-
-!     call save_npy("Optimal_gains.npy", gains)
-
-!     return
-!   end subroutine transient_growth
-
-!   subroutine resolvent_analysis(omegas)
-!     !> Time instants at which to compute the optimal growth.
-!     real, intent(in) :: omegas(:)
-!     !> Exponential propagator.
-!     type(resolvent_op), allocatable :: R
-!     !> Krylov subspaces.
-!     integer, parameter :: kdim = 2*nx
-!     type(vector), allocatable :: U(:), V(:)
-!     !> Singular triplets.
-!     real :: sigma(kdim), uvecs(kdim, kdim), vvecs(kdim, kdim)
-!     real :: residuals(kdim)
-!     !> Information flag.
-!     integer :: info
-!     !> Gains.
-!     real :: gains(size(omegas), 5)
-!     !> Miscellaneous.
-!     integer :: i, j, k
-!     real :: alpha
-
-!     ! --> Initialize variables.
-!     allocate(U(kdim+1)) ; allocate(V(kdim+1))
-!     R = resolvent_op(0.0_wp)
-!     gains = 0.0_wp ; sigma = 0.0_wp ; uvecs = 0.0_wp ; vvecs = 0.0_wp ; residuals = 0.0_wp
-
-!     do i = 1, size(omegas)
-
-!        write(*, *) "--: Circular frequency : ", omegas(i)
-
-!        !> Set the forcing frequency for the Resolvent.
-!        R%omega = omegas(i)
-
-!        !> Initialize Krylov subspaces.
-!        do j = 1, size(U)
-!           call U(j)%zero() ; call V(j)%zero()
-!        enddo
-!        call random_number(U(1)%x) ; alpha = U(1)%norm() ; call U(1)%scal(1.0_wp / alpha)
-
-!        !> Singular value computation.
-!        call svds(R, U, V, uvecs, vvecs, sigma, residuals, info, nev=10, tolerance=rtol)
-
-!        !> Store computed gains.
-!        do k = 1, size(gains, 2)
-!           gains(i, k) = sigma(2*k-1)
-!        enddo
-!        write(*, *) "    Optimal gains :", gains(i, :)
-!        write(*, *)
-!     enddo
-
-!     call save_npy("Resolvent_gains.npy", gains)
-
-!     return
-!   end subroutine resolvent_analysis
-
-!   subroutine resolvent_single_freq(omega, elapsed_time)
-!     !> Time instants at which to compute the optimal growth.
-!     real, intent(in) :: omega
-!     !> Elapsed time.
-!     real, intent(out) :: elapsed_time
-!     real              :: start_time = 0.0_wp, end_time = 0.0_wp
-!     !> Exponential propagator.
-!     type(resolvent_op), allocatable :: R
-!     !> Krylov subspaces.
-!     integer, parameter :: kdim = 2*nx
-!     type(vector), allocatable :: U(:), V(:)
-!     !> Singular triplets.
-!     real :: sigma(kdim), uvecs(kdim, kdim), vvecs(kdim, kdim)
-!     real :: residuals(kdim)
-!     !> Information flag.
-!     integer :: info
-!     !> Miscellaneous.
-!     integer :: i, j, k
-!     real :: alpha
-
-!     ! --> Initialize variables.
-!     allocate(U(1:kdim+1)) ; allocate(V(1:kdim+1))
-!     R = resolvent_op(omega)
-!     sigma = 0.0_wp ; uvecs = 0.0_wp ; vvecs = 0.0_wp ; residuals = 0.0_wp
-
-!     !> Initialize Krylov subspaces.
-!     do j = 1, size(U)
-!        call U(j)%zero() ; call V(j)%zero()
-!     enddo
-!     call random_number(U(1)%x) ; alpha = U(1)%norm() ; call U(1)%scal(1.0_wp / alpha)
-
-!     !> Singular value computation.
-!     call cpu_time(start_time)
-!     call svds(R, U, V, uvecs, vvecs, sigma, residuals, info, nev=10, tolerance=rtol)
-!     call cpu_time(end_time)
-
-!     !> Elapsed time.
-!     elapsed_time = end_time - start_time
-
-!     return
-!   end subroutine resolvent_single_freq
+        return
+        end subroutine linear_stability_analysis
