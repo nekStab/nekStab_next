@@ -53,7 +53,7 @@ if [ "$should_clone" == "yes" ]; then
         echo "Cloning LightKrylov repository..."
         git clone https://github.com/nekStab/LightKrylov.git
         cd LightKrylov
-        git checkout master
+        git checkout main
     else
         echo "Skipping cloning."
     fi
@@ -62,7 +62,21 @@ else
 fi
 
 fpm clean
-#fpm install --verbose --flag "-Wall -Wextra -g -fbacktrace -fbounds-check"
-fpm install --flag "-O3 -march=native -funroll-loops -ffast-math"
+
+if command -v mpiifort >/dev/null 2>&1; then
+
+fpm build --verbose 
+fpm run --verbose
+
+    fpm build --verbose  --compiler 'mpiifort' --flag "-Ofast -xHost -g -traceback"
+    #fpm build --verbose  --compiler 'mpiifort' --flag "O0 -g -traceback -Wall"
+
+else
+
+    fpm install --verbose --flag "-O3 -march=native -funroll-loops -ffast-math"
+    fpm build --verbose  --compiler 'mpif90'  --flag "-O3 -march=native -funroll-loops -ffast-math"
+    #fpm build --verbose  --compiler 'mpif90'  --flag "-Wall -Wextra -g -fbacktrace -fbounds-check"
+
+fi
 
 echo "LightKrylov setup complete."

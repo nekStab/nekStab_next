@@ -2,12 +2,12 @@
 startFrom = BF_1cyl0.f00001
 
 stopAt = endTime
-endTime = 1.0
-userParam01 = 3.1 # Direct
+endTime = 1
+userParam01 = 3.2 # Direct
 dt = 0
 
 writeControl = runTime
-writeInterval = 100.
+writeInterval = 10.
 writeDoublePrecision = no
 dealiasing = yes
 

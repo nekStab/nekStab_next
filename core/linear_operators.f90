@@ -43,6 +43,7 @@
         select type (vec_out)
         type is (real_nek_vector)
 
+        write(6,*)'direct solver, init=',init
         call setupLinearSolver('DIRECT', init)
         call nekstab_solver('DIRECT', init, vec_in, vec_out)
 
@@ -88,7 +89,15 @@
         character(len=8), intent(in) :: solver_type
         logical, intent(inout) :: init
 
-        ! turn on linearized solver
+        write(6,*)'setup solver, init=',init
+
+        if(init)then
+            if(nid.eq.0)write(6,*)'initializing linear solver'
+            if(nid.eq.0)write(6,*)'solver type:',solver_type
+        endif
+
+        ! turn on linearized solver (default)
+        ! integrates vxp, vyp, vzp, prp, tp
         ifpert = .true.
         call bcast(ifpert, lsize)
 
@@ -97,7 +106,8 @@
         if (solver_type == 'ADJOINT') ifadj = .true.
         call bcast(ifadj, lsize)
 
-        ! turn off nonlinear solver
+        ! turn off nonlinear solver (default)
+        ! integrates vx, vy, vz, pr, t
         ifbase = .false.
 
         if (isFloquetDirect .or. isFloquetAdjoint) then
@@ -118,6 +128,9 @@
             
         endif
         
+        if (isFloquetDirect.or.isFloquetAdjoint.or.isFloquetDirectAdjoint) then
+            if(nid.eq.0)write(6,*)'Floquet mode'
+
         ! turn off nonlinear solver if criteria met
         if (ifstorebase .and. init) ifbase = .false.
 
@@ -143,6 +156,8 @@
         ! the nonlinear solution is already stored
         if (solver_type == 'ADJOINT' .and. isFloquetDirectAdjoint) init=.true. 
 
+        endif ! Floquet mode
+
         end subroutine
 
         subroutine nekstab_solver(solver_type, init, in, out)
@@ -157,6 +172,9 @@
         type(real_nek_vector), intent(in) :: in
         type(real_nek_vector), intent(out) :: out
         
+        integer, save :: mstep_counter 
+        data             mstep_counter /1/
+
         integer m
         nt = nx1*ny1*nz1*nelt
 
@@ -165,8 +183,12 @@
 
         time = 0.0D0
         do istep = 1, nsteps
+
         ! --> Output current info to logfile.
-        !if(nid .eq. 0) write(6,"(' ", A7, ":',I6,'/',I6,' from',I6,'/',I6,' (',I3,')')") trim(solver_type), istep, nsteps, mstep, k_dim, schur_cnt
+        if(nid .eq. 0) then
+            write(6,*)''
+            write(6,"(' ', A7, ':', I6, '/', I6, ' from', I6, '/', I6, ' (', I3, ')')") trim(solver_type), istep, nsteps, mstep_counter, k_dim, schur_cnt
+        endif
 
         ! --> Integrate in time.
         call nekstab_usrchk()
@@ -204,6 +226,7 @@
 
         ! --> Copy the solution.
         call nopcopy(out%vx,out%vy,out%vz,out%pr,out%t, vxp(:,1),vyp(:,1),vzp(:,1),prp(:,1),tp(:,:,1))
+        mstep_counter = mstep_counter + 1
 
         end subroutine nekstab_solver
 

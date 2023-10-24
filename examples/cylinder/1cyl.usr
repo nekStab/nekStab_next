@@ -11,7 +11,9 @@ c-----------------------------------------------------------------------
       subroutine nekStab_usrchk
       include 'SIZE'
       include 'TOTAL'
-
+      if(istep.eq.0)then
+       maxmodes=2
+      endif
       return
       end
 c-----------------------------------------------------------------------
