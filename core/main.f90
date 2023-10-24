@@ -7,7 +7,7 @@ c-----------------------------------------------------------------------
       include 'TOTAL'
 
       k_dim = 100               ! standard value, increas  in .usr 
-      schur_tgt = 2             ! schur target for schur step factorizaiton
+      schur_tgt = int(2)        ! schur target for schur step factorizaiton
       eigen_tol = 1.0e-6        ! tolerance for eigenmodes convergence
       schur_del = 0.10d0        !
       maxmodes = 20             ! max number of converged modes to disk
@@ -46,14 +46,15 @@ c-----------------------------------------------------------------------
       evop = '_'
 
 !     !Broadcast all defaults !
-      call bcast(schur_tgt, isize) ! isize for integer
       call bcast(eigen_tol, wdsize) ! wdsize for real
       call bcast(schur_del, wdsize)
-      call bcast(maxmodes, isize)
-      call bcast(k_dim, isize)
-      call bcast(bst_skp, isize)
-      call bcast(bst_snp, isize)
-      call bcast(glob_skip, isize)
+
+      call bcast(schur_tgt, isize8) ! isize8 for integer
+      call bcast(maxmodes, isize8)
+      call bcast(k_dim, isize8)
+      call bcast(bst_skp, isize8)
+      call bcast(bst_snp, isize8)
+      call bcast(glob_skip, isize8)
 
       call bcast(ifres   , lsize) !lsize for boolean
       call bcast(ifvor   , lsize)    
@@ -206,7 +207,7 @@ c-----------------------------------------------------------------------
              elseif (isNewtonPO_T) then
                  write(6,*) 'Newton-Krylov for forced UPOs...'
              else
-                 write(6,*) 'NEWTON MODE NOT CORRECTLY SPECIFIED!'
+                 write(6,*) 'Unrecognized option...'
                  call nek_end
              endif
          endif
@@ -306,8 +307,7 @@ c-----------------------------------------------------------------------
       
       character(len=20) :: fich1, fich2, fich3, fmt2, fmt3, fmt4, fmt5, fmt6
       character(len=30) :: filename
-      !>
-      !A = exponential_prop(1.0_wp)
+
       ! --> Initialize Krylov subspace.
       allocate (X(1:k_dim + 1))
       ! call random_number(X(1)%x)
@@ -370,15 +370,21 @@ c-----------------------------------------------------------------------
       ! !    call nopcopy(wrk%vx,wrk%vy,wrk%vz,wrk%pr,wrk%t, ubase,vbase,wbase,pbase,tbase)
       ! !    call k_normalize(wrk, alpha)
       ! end if
+
+      call prepare_linearized_solver
+      A = exponential_prop(fintim)
+
       ! --> Eigenvalue analysis.
       if (isDirect .or. isFloquetDirect) then
           evop = 'd'
-          call eigs(A, X, eigvecs, eigvals, residuals, info, nev=schur_tgt, tol=eigen_tol, verbosity=.true., transpose=.false.)
+          call eigs(A, X, eigvecs, eigvals, residuals, info, nev=2, tol=eigen_tol, verbosity=.true., transpose=.false.)
       
       elseif (isAdjoint .or. isFloquetAdjoint) then
           evop = 'a'
-          call eigs(A, X, eigvecs, eigvals, residuals, info, nev=schur_tgt, tol=eigen_tol, verbosity=.true. ,transpose=.true.)
+          call eigs(A, X, eigvecs, eigvals, residuals, info, nev=2, tol=eigen_tol, verbosity=.true. ,transpose=.true.)
       end if
+
+      
       fich1 = 'Spectre_H'//trim(evop)//'.dat'
       fich2 = 'Spectre_NS'//trim(evop)//'.dat'
       fich3 = 'Spectre_NS'//trim(evop)//'_conv.dat'

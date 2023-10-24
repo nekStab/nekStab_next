@@ -31,18 +31,18 @@
             procedure, pass(self), public :: axpby => real_axpby
       end type real_nek_vector
 
-      type, extends(abstract_vector), public :: cmplx_nek_vector
-            complex, dimension(lv) :: vx, vy, vz
-            complex, dimension(lp) :: pr
-            complex, dimension(lv,ldimt) :: t
-            complex :: time
-      contains
-            private
-            procedure, pass(self), public :: zero => cmplx_zero
-            procedure, pass(self), public :: dot => cmplx_dot
-            procedure, pass(self), public :: scal => cmplx_scal
-            procedure, pass(self), public :: axpby => cmplx_axpby
-      end type cmplx_nek_vector
+      ! type, extends(abstract_vector), public :: cmplx_nek_vector
+      !       complex, dimension(lv) :: vx, vy, vz
+      !       complex, dimension(lp) :: pr
+      !       complex, dimension(lv,ldimt) :: t
+      !       real :: time
+      ! contains
+      !       private
+      !       procedure, pass(self), public :: zero => cmplx_zero
+      !       procedure, pass(self), public :: dot => cmplx_dot
+      !       procedure, pass(self), public :: scal => cmplx_scal
+      !       procedure, pass(self), public :: axpby => cmplx_axpby
+      ! end type cmplx_nek_vector
 
       type(real_nek_vector), save, public :: ic_nwt, fc_nwt
       real,save,allocatable,dimension(:, :),public ::uor,vor,wor
@@ -88,7 +88,7 @@
             
             ! --> Potential energy.
             if (ifto) alpha = alpha + glsc3(self%t(:,1), bm1s, vec%t(:,1), nt)
-            if (ldimt.gt.1) then
+            if (ldimt > 1) then
                do m = 2,ldimt
                  if(ifpsco(m-1)) alpha = alpha + glsc3(self%t(:,m), bm1s, vec%t(:,m), nt)
                enddo
@@ -131,56 +131,61 @@
       
             ! Complex prodcedures definitions.
 
-            subroutine cmplx_zero(self)
-            implicit none
-            include 'SIZE'      
-            include 'TOTAL'
-            class(cmplx_nek_vector), intent(inout) :: self
-            call noprzero(self%vx,self%vy,self%vz,self%pr,self%t)
-            self%time = 0.0D0
-            return
-            end subroutine cmplx_zero
+      !       subroutine cmplx_zero(self)
+      !       implicit none
+      !       include 'SIZE'      
+      !       include 'TOTAL'
+      !       class(cmplx_nek_vector), intent(inout) :: self
+      !       call noprzero(self%real(vx),self%real(vy),self%real(vz),self%real(pr),self%real(t))
+      !       call noprzero(self%imag(vx),self%imag(vy),self%imag(vz),self%imag(pr),self%imag(t))
+      !       self%time = 0.0D0 ! time is real
+      !       return
+      !       end subroutine cmplx_zero
             
-            real function cmplx_dot(self, vec) result(alpha)
-            implicit none
-            include 'SIZE'      
-            include 'TOTAL'
-            class(cmplx_nek_vector), intent(in) :: self
-            class(abstract_vector), intent(in) :: vec
-            integer m
-            nv = nx1*ny1*nz1*nelv
-            nt = nx1*ny1*nz1*nelt
-            select type(vec)
-            type is(cmplx_nek_vector)
-            ! bm1s is real, glsc3 is real
-            end select
-            return
-            end function cmplx_dot
+      !       real function cmplx_dot(self, vec) result(alpha)
+      !       implicit none
+      !       include 'SIZE'      
+      !       include 'TOTAL'
+      !       class(cmplx_nek_vector), intent(in) :: self
+      !       class(abstract_vector), intent(in) :: vec
+      !       integer m
+      !       nv = nx1*ny1*nz1*nelv
+      !       nt = nx1*ny1*nz1*nelt
+      !       select type(vec)
+      !       type is(cmplx_nek_vector)
+      !       ! bm1s is real, glsc3 is real
+      !       end select
+      !       return
+      !       end function cmplx_dot
             
-            subroutine cmplx_scal(self, alpha)
-            implicit none
-            include 'SIZE'      
-            include 'TOTAL'
-            class(cmplx_nek_vector), intent(inout) :: self
-            real, intent(in) :: alpha
-            call nopcmult(self%vx,self%vy,self%vz,self%pr,self%t, alpha)
-            self%time = self%time * alpha
-            return
-            end subroutine cmplx_scal
+      !       subroutine cmplx_scal(self, alpha)
+      !       implicit none
+      !       include 'SIZE'      
+      !       include 'TOTAL'
+      !       class(cmplx_nek_vector), intent(inout) :: self
+      !       complex, intent(in) :: alpha
+      !       call nopcmult(self%real(vx),self%real(vy),self%real(vz),self%real(pr),self%real(t), real(alpha))
+      !       call nopcmult(self%imag(vx),self%imag(vy),self%imag(vz),self%imag(pr),self%imag(t), imag(alpha))
+      !       self%time = self%time * real(alpha) + self%time * aimag(alpha) ! time is realmak
+      !       return
+      !       end subroutine cmplx_scal
             
-            subroutine cmplx_axpby(self, alpha, vec, beta)
-            implicit none
-            include 'SIZE'      
-            include 'TOTAL'
-            class(cmplx_nek_vector), intent(inout) :: self
-            class(abstract_vector), intent(in) :: vec
-            real , intent(in) :: alpha, beta
-            select type(vec)
-            type is(cmplx_nek_vector)
-            call nopaxpby(self%vx,self%vy,self%vz,self%pr,self%t,alpha,vec%vx,vec%vy,vec%vz,vec%pr,vec%t,beta)
-            end select
-            return
-            end subroutine cmplx_axpby
+      !       subroutine cmplx_axpby(self, alpha, vec, beta)
+      !       implicit none
+      !       include 'SIZE'      
+      !       include 'TOTAL'
+      !       class(cmplx_nek_vector), intent(inout) :: self
+      !       class(abstract_vector), intent(in) :: vec
+      !       complex , intent(in) :: alpha, beta
+      !       select type(vec)
+      !       type is(cmplx_nek_vector)
+      !       call nopaxpby(self%real(vx),self%real(vy),self%real(vz),self%real(pr),self%real(t),real(alpha),
+      !      $                   vec%real(vx),vec%real(vy),vec%real(vz),vec%real(pr),vec%real(t),real(beta))
+      !       call nopaxpby(self%imag(vx),self%imag(vy),self%imag(vz),self%imag(pr),self%imag(t),real(alpha),
+      !      $                   vec%imag(vx),vec%imag(vy),vec%imag(vz),vec%imag(pr),vec%imag(t),real(beta))
+      !       end select
+      !       return
+      !       end subroutine cmplx_axpby
 
       end module NekVectors
 
@@ -198,7 +203,7 @@ c-----------------------------------------------------------------------
       if (if3D) call rzero(a3,n)
       if (ifpo) call rzero(a4,nx2*ny2*nz2*nelv)
       if (ifto) call rzero(a5(1,1),lx1*ly1*lz1*nelfld(2))
-      if (ldimt.gt.1) then 
+      if (ldimt > 1) then 
          do k=1,npscal
                if(ifpsco(k)) call rzero(a5(1,k+1),lx1*ly1*lz1*nelfld(k+2))
          enddo
@@ -219,7 +224,7 @@ c-----------------------------------------------------------------------
       if (if3D) call cmult(a3,c,n)
       if (ifpo) call cmult(a4,c,nx2*ny2*nz2*nelv)
       if (ifto) call cmult(a5(1,1),c,lx1*ly1*lz1*nelfld(2))
-      if (ldimt.gt.1) then 
+      if (ldimt > 1) then 
          do k=1,npscal
                if(ifpsco(k)) call cmult(a5(1,k+1),c,lx1*ly1*lz1*nelfld(k+2))
          enddo
@@ -248,7 +253,7 @@ c-----------------------------------------------------------------------
       if (if3D) call axpby(a3,alpha,b3,beta,n)
       if (ifpo) call axpby(a4,alpha,b4,beta,nx2*ny2*nz2*nelv)
       if (ifto) call axpby(a5(1,1),alpha,b5(1,1),beta,lx1*ly1*lz1*nelfld(2))
-      if (ldimt.gt.1) then 
+      if (ldimt > 1) then 
          do k=1,npscal
                if(ifpsco(k)) call axpby(a5(1,k+1),alpha,b5(1,k+1),beta,lx1*ly1*lz1*nelfld(k+2))
          enddo
@@ -269,7 +274,7 @@ c-----------------------------------------------------------------------
          if (if3D) call copy(a3,b3,n)
          if (ifpo) call copy(a4,b4,nx2*ny2*nz2*nelv)
          if (ifto) call copy(a5(1,1),b5(1,1),lx1*ly1*lz1*nelfld(2))
-         if (ldimt.gt.1) then 
+         if (ldimt > 1) then 
             do k=1,npscal
                if(ifpsco(k)) call copy(a5(1,k+1),b5(1,k+1),lx1*ly1*lz1*nelfld(k+2))
             enddo
@@ -290,7 +295,7 @@ c-----------------------------------------------------------------------
       if (if3D) call sub2(a3,b3,n)
       if (ifpo) call sub2(a4,b4,nx2*ny2*nz2*nelv)
       if (ifto) call sub2(a5(1,1),b5(1,1),lx1*ly1*lz1*nelfld(2))
-      if (ldimt.gt.1) then 
+      if (ldimt > 1) then 
          do k=1,npscal
                if(ifpsco(k)) call sub2(a5(1,k+1),b5(1,k+1),lx1*ly1*lz1*nelfld(k+2))
          enddo
@@ -312,7 +317,7 @@ c-----------------------------------------------------------------------
       if (if3D) call sub3(c3,a3,b3,n)
       if (ifpo) call sub3(c4,a4,b4,nx2*ny2*nz2*nelv)
       if (ifto) call sub3(c5(1,1),a5(1,1),b5(1,1),lx1*ly1*lz1*nelfld(2))
-      if (ldimt.gt.1) then 
+      if (ldimt > 1) then 
          do k=1,npscal
                if(ifpsco(k)) call sub3(c5(1,k+1),a5(1,k+1),b5(1,k+1),lx1*ly1*lz1*nelfld(k+2))
          enddo
@@ -333,7 +338,7 @@ c-----------------------------------------------------------------------
       if (if3D) call add2(a3,b3,n)
       if (ifpo) call add2(a4,b4,nx2*ny2*nz2*nelv)
       if (ifto) call add2(a5(1,1),b5(1,1),lx1*ly1*lz1*nelfld(2))
-      if (ldimt.gt.1) then 
+      if (ldimt > 1) then 
          do k=1,npscal
                if(ifpsco(k)) call add2(a5(1,k+1),b5(1,k+1),lx1*ly1*lz1*nelfld(k+2))
          enddo

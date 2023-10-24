@@ -53,6 +53,8 @@ else
     FFLAGS+=" -march=native" # Enables all instruction subsets supported by the local machine.
     FFLAGS+=" -g" # Enables debugging information.
     FFLAGS+=" -fbacktrace" # Provides a backtrace in case of errors, useful for debugging.
+    FFLAGS+=" -std=legacy -Wall" # Provides a backtrace in case of errors, useful for debugging.
+    
 fi
 
 #-------------------------------------------------------------------------------

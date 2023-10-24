@@ -24,61 +24,60 @@
 
         contains
 
-
         subroutine direct_solver(self, vec_in, vec_out)
 
-            implicit none
-            include 'SIZE'
-            include 'TOTAL'
-            include 'ADJOINT'
-    
-            class(exponential_prop), intent(in)  :: self
-            class(abstract_vector), intent(in)  :: vec_in
-            class(abstract_vector), intent(out) :: vec_out
-            
-            logical, save :: init
-            data             init /.false./
-    
-            select type (vec_in)
-            type is (real_nek_vector)
-            select type (vec_out)
-            type is (real_nek_vector)
-    
-            call setupLinearSolver('DIRECT', init)
-            call nekstab_solver('DIRECT', init, vec_in, vec_out)
-    
-            end select
-            end select
-            return
-            end subroutine direct_solver
-    
-            subroutine adjoint_solver(self, vec_in, vec_out)
-    
-            implicit none
-            include 'SIZE'
-            include 'TOTAL'
-            include 'ADJOINT'
-    
-            class(exponential_prop), intent(in)  :: self
-            class(abstract_vector), intent(in)  :: vec_in
-            class(abstract_vector), intent(out) :: vec_out
-            
-            logical, save :: init
-            data             init /.false./
-    
-            select type (vec_in)
-            type is (real_nek_vector)
-            select type (vec_out)
-            type is (real_nek_vector)
-    
-            call setupLinearSolver('ADJOINT', init)
-            call nekstab_solver('ADJOINT', init, vec_in, vec_out)
-    
-            end select
-            end select
-            return
-            end subroutine adjoint_solver
-    
+        implicit none
+        include 'SIZE'
+        include 'TOTAL'
+        include 'ADJOINT'
+
+        class(exponential_prop), intent(in)  :: self
+        class(abstract_vector), intent(in)  :: vec_in
+        class(abstract_vector), intent(out) :: vec_out
+        
+        logical, save :: init
+        data             init /.false./
+
+        select type (vec_in)
+        type is (real_nek_vector)
+        select type (vec_out)
+        type is (real_nek_vector)
+
+        call setupLinearSolver('DIRECT', init)
+        call nekstab_solver('DIRECT', init, vec_in, vec_out)
+
+        end select
+        end select
+        return
+        end subroutine direct_solver
+
+        subroutine adjoint_solver(self, vec_in, vec_out)
+
+        implicit none
+        include 'SIZE'
+        include 'TOTAL'
+        include 'ADJOINT'
+
+        class(exponential_prop), intent(in)  :: self
+        class(abstract_vector), intent(in)  :: vec_in
+        class(abstract_vector), intent(out) :: vec_out
+        
+        logical, save :: init
+        data             init /.false./
+
+        select type (vec_in)
+        type is (real_nek_vector)
+        select type (vec_out)
+        type is (real_nek_vector)
+
+        call setupLinearSolver('ADJOINT', init)
+        call nekstab_solver('ADJOINT', init, vec_in, vec_out)
+
+        end select
+        end select
+        return
+        end subroutine adjoint_solver
+
         subroutine setupLinearSolver(solver_type,init)
         
         implicit none
@@ -86,7 +85,7 @@
         include 'TOTAL'
         include 'ADJOINT'
 
-        character(len=7), intent(in) :: solver_type
+        character(len=8), intent(in) :: solver_type
         logical, intent(inout) :: init
 
         ! turn on linearized solver

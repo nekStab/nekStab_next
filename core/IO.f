@@ -2,15 +2,11 @@ c-----------------------------------------------------------------------
       subroutine whereyouwant(resnam,posfil) !file numbering suffix counter
         implicit none
         character(len=3) :: resnam
-        integer :: posfil,iprefix,i_find_prefix,nopen
+        integer :: posfil,i_find_prefix,nopen
         common /RES_WANT/ nopen(99, 2)
-    
-        ! Find the prefix index in the array
-        iprefix = i_find_prefix(resnam, 99)
-        ! Update the corresponding entry in nopen with the file position minus 1
-        nopen(iprefix, 1) = posfil - 1
-    
-        return
+        
+        ! Update the corresponding entry in nopen
+        nopen(i_find_prefix(resnam, 99), 1) = posfil - 1
       end subroutine whereyouwant
 c-----------------------------------------------------------------------
         subroutine load_files(Q, mstart, kd, fname)
