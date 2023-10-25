@@ -83,7 +83,16 @@ if __name__ == '__main__':
     plt.yticks(xrz,xlabels);plt.ylim(-1.1,1.1);plt.ylabel(r'$\Im (\mu)$')
 
     f = Spectre('Spectre_Hd.dat')
-    plot_H(plt, f.R, f.I, f.r, 8, 'k', 'o', r'$Re=50$')
+    plot_H(plt, f.R, f.I, f.r, 20, 'k', 'o', r'$Re=50$')
+    
+    f = Spectre('/home/cobra/nekStab/examples/cylinder/stability/direct/Spectre_Hd.dat')
+    plot_H(plt, f.R, f.I, f.r, 12, 'green', 'o', r'$Re=50$')
+    
+    f = Spectre('Spectre_Ha.dat')
+    plot_H(plt, f.R, f.I, f.r, 20, 'red', '+', r'$Re=50^{\dagger}$')
+    
+    
+    
 
     fname='Spectre_H.'+formt
     plt.legend(loc='best',fontsize=6)
@@ -95,7 +104,13 @@ if __name__ == '__main__':
     plt.xlabel(r'$f=\omega/2\pi$'); plt.ylim(-0.4,0.3)
 
     f = Spectre('Spectre_NSd.dat')
-    plot_NS(plt, f.R, f.I, f.r, True, 8, 'k', 'o', r'$Re=50$')
+    plot_NS(plt, f.R, f.I, f.r, True, 12, 'k', 'o', r'$Re=50$')
+    
+    f = Spectre('/home/cobra/nekStab/examples/cylinder/stability/direct/Spectre_NSd.dat')
+    plot_NS(plt, f.R, f.I, f.r, True, 12, 'green', 'o', r'$Re=50$')
+    
+    f = Spectre('Spectre_NSa.dat')
+    plot_NS(plt, f.R, f.I, f.r, True, 20, 'red', '+', r'$Re=50^{\dagger}$')
 
     fname='Spectre_NS.'+formt
     plt.legend(loc='best',fontsize=6)

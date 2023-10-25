@@ -1,41 +1,49 @@
-      subroutine linear_stability_analysis
-         use NekVectors
+      module LinearStab
+         use LightKrylov!, krylov_atol => atol
          use LinearOperators
-         use LightKrylov, krylov_atol => atol
+         use NekVectors
+         implicit none
+         
+         private
+         public :: linear_stability_analysis
+      
+      contains
+
+      subroutine linear_stability_analysis
          implicit none
          include 'SIZE'
          include 'TOTAL'
          
-         class(exponential_prop), allocatable :: A
-         class(real_nek_vector), allocatable :: X(:),seed
+         class(exponential_prop), allocatable :: A ! polymorphic type declared 
+         class(real_nek_vector), allocatable :: X(:)
          complex :: eigvecs(k_dim, k_dim), eigvals(k_dim)
          real :: residuals(k_dim)
          integer :: info
          logical :: transpose
 
-         allocate(X(1:k_dim + 1),seed)
-
          call prepare_base_flow
-         call prepare_linearized_solver
-         A = exponential_prop(fintim)
-         call prepare_perturbation_seed(seed)
-         call nopcopy(X(1)%vx,X(1)%vy,X(1)%vz,X(1)%pr,X(1)%t, seed%vx,seed%vy,seed%vz,seed%pr,seed%t)
          
-         if      (isDirect .or. isFloquetDirect) then
-            evop = 'd'
-            transpose = .false.
+         call set_linear_solver
+         A = exponential_prop(fintim)
+
+         allocate(X(1:k_dim + 1))
+         call prepare_seed(X)
+         
+         if (isDirect .or. isFloquetDirect) then
+            evop = 'd'; transpose = .false.
          elseif (isAdjoint .or. isFloquetAdjoint) then
-            evop = 'a'
-            transpose = .true.
+            evop = 'a'; transpose = .true.
          end if
-         call eigs(A, X, eigvecs, eigvals, residuals, info)!, nev, tolerance, verbosity, transpose)
+
+         ! compute the eigenproblem
+         call eigs(A, X, eigvecs, eigvals, residuals, info, transpose=transpose, verbosity=.true.)!, nev=schur_tgt, tolerance=eigen_tol)
         
          call outpost_eigenspectrum(eigvals, residuals, 'Spectre_H'//trim(evop)//'.dat')
         
          eigvals = log(eigvals)/A%t
         
          call outpost_eigenspectrum(eigvals, residuals, 'Spectre_NS'//trim(evop)//'.dat')
-         !call outpost_eigenvectors()
+         call outpost_eigenvectors(X, eigvals, eigvecs, residuals)
         
       end subroutine linear_stability_analysis
 
@@ -43,21 +51,14 @@
          implicit none
          include 'SIZE'
          include 'TOTAL'
-
          character(len=30) :: filename      
-         time = 0.0d0 ! might be overwritten by load_fld
       
          if (ifldbf) then !skip loading if single run
          
             if (nid .eq. 0) write (*, *) ' Loading base flow from disk:'
             write (filename, '(a,a,a)') 'BF_', trim(SESSION), '0.f00001'
             call load_fld(filename)
-
-            !time might containt the exact period of the PO (if Floquet)
-         
-            if (nid .eq. 0) write (*, *) ' Number os scalars found (npscal): ', npscal
-            if (nid .eq. 0) write (*, *) ' ifldbf done.'
-         
+            !time might containt the exact period of the PO (if Floquet)         
          else
          
             if (nid .eq. 0) write (*, *) 'Baseflow prescribed by the useric function in the .usr'
@@ -66,82 +67,70 @@
 
          call nopcopy(ubase, vbase, wbase, pbase, tbase, vx, vy, vz, pr, t)
         
-         return
       end subroutine prepare_base_flow
 
-      subroutine prepare_linearized_solver
-      
+      subroutine set_linear_solver
          implicit none
          include 'SIZE'
          include 'TOTAL'
-      
-         call nekgsync
-      
-      ! here we are taking the time from the base flow file
-         if (istep .eq. 0 .and. (isFloquetDirect .or. isFloquetAdjoint .or. isFloquetDirectAdjoint)) then
-            param(10) = time  ! Update UPO period in the field
-            if (nid .eq. 0) then
-               write (6, *) 'Floquet mode activated.'
-               write (6, *) 'Getting endTime from file: endTime = ', param(10)
+
+         ! Update UPO period from base flow file if Floquet mode is activated
+         if (istep == 0 .and. (isFloquetDirect .or. isFloquetAdjoint .or. isFloquetDirectAdjoint)) then
+            param(10) = time
+            if (nid == 0) then
+               write(6, *) 'Floquet mode activated. Getting endTime from file: ', param(10)
             end if
          end if
-      ! Broadcast the UPO period to all processors
-         call bcast(param(10), wdsize)
-        
-      !     --> Force only single perturbation mode.
-         if (param(31) .gt. 1) then
-            write(6, *) 'nekStab not ready for npert > 1 -- jp loops not yet implemented. Stoppiing.'
+
+         ! Limit number of perturbation modes to 1
+         if (param(31) > 1) then
+            write(6, *) 'Multiple perturbation modes not supported. Exiting.'
             call nek_end
-         endif
-         param(31) = 1 ; npert = param(31)
+         end if
+         param(31) = 1
+
+         ! Deactivate OIFS for linearized solver
+         if (ifchar) then
+            write(6, *) 'OIFS not compatible with linearized solver. Deactivating.'
+            ifchar = .false.
+            call bcast(ifchar, lsize)
+         end if
         
-      !     --> Force deactivate OIFS.
-         if (ifchar) write(6, *) 'OIFS not working with linearized solver. Turning it off.'
-         ifchar = .false. ; call bcast(ifchar, lsize)
-        
-      !     --> Enforce CFL target for EXTk
-         if (param(26) .gt. 1.0) then
-            write(6, *) "Forcing target CFL to 0.5!"
+         ! Limit target CFL for EXTk to 0.5
+         if (param(26) > 1.0) then
             param(26) = 0.5d0
-         endif
-        
-      !     --> Set nsteps/endTime accordingly.
-         if (param(10) .gt. 0) then
-            if(nid.eq.0)write(6,*)'param(10),time=',param(10),time
-            if(nid.eq.0)write(6,*)'endTime specified! Recomputing dt and nsteps to match endTime'
-            call compute_cfl(ctarg, vx, vy, vz, 1.0d0) ! ctarg contains the sum ( ux_i / dx_i )
-            if(nid.eq.0)write(6,*)'max spatial restriction:',ctarg
-            dt = param(26) / ctarg ! dt given target CFL
-            nsteps = ceiling(param(10) / dt) ! computing a safe value of nsteps
-            dt = param(10) / nsteps ! reducing dt to match param(10)
-            if(nid.eq.0)write(6,*)' new timeStep dt=',dt
-            if(nid.eq.0)write(6,*)' new numSteps nsteps=',nsteps
-            if(nid.eq.0)write(6,*)' resulting sampling period =',nsteps*dt
+            write(6, *) 'Target CFL limited to 0.5'
+         end if
+
+         ! Recompute time steps and endTime to match UPO period
+         if (param(10) > 0.0d0) then
+            call compute_cfl(ctarg, vx, vy, vz, 1.0d0)
+            dt = param(26) / ctarg
+            nsteps = ceiling(param(10) / dt)
+            dt = param(10) / nsteps
+            if (nid == 0) then
+               write(6, *) 'New timeStep dt=', dt
+               write(6, *) 'New numSteps nsteps=', nsteps
+            end if
             param(12) = dt
             call compute_cfl(ctarg, vx, vy, vz, dt) ! C=sum(ux_i/dx_i)*dt
             if(nid.eq.0)write(6,*)' current CFL and target=',ctarg,param(26)
             lastep = 0             ! subs1.f:279
             fintim = nsteps*dt
-         endif
+         end if
         
-      !     --> Force constant time step.
-         param(12) = -abs(param(12))
+         param(12) = -abs(param(12)) ! force constant time step
+         call bcast(param, 200*wdsize) ! broadcast all parameters
         
-      !     --> Broadcast parameters.
-         call bcast(param, 200*wdsize)
-        
-         return
-      end subroutine prepare_linearized_solver
+      end subroutine set_linear_solver
 
-      subroutine prepare_perturbation_seed(seed)
-         use NekVectors
-         use LinearOperators
-         use LightKrylov, krylov_atol => atol
+      subroutine prepare_seed(X)
          implicit none
          include 'SIZE'
          include 'TOTAL'
       
-         type(real_nek_vector), intent(inout) :: seed
+         class(real_nek_vector), intent(in) :: X(1:k_dim + 1)
+         type(real_nek_vector) :: seed
          character(len=30) :: filename
          integer :: m
       
@@ -177,15 +166,13 @@
          
          end if
         
-         !call nopcopy(X(1)%vx,X(1)%vy,X(1)%vz,X(1)%pr,X(1)%t, wrk%vx,wrk%vy,wrk%vz,wrk%pr,wrk%t)
+         call nopcopy(X(1)%vx,X(1)%vy,X(1)%vz,X(1)%pr,X(1)%t, seed%vx,seed%vy,seed%vz,seed%pr,seed%t)
         
-         return ! seed returns to X(1)
-      end subroutine prepare_perturbation_seed
+      end subroutine prepare_seed
 
       subroutine outpost_eigenspectrum(eigvals, residuals, filename)
          implicit none
          include 'SIZE'
-         include 'TOTAL'
 
          complex, intent(in) :: eigvals(k_dim)
          real, intent(in) :: residuals(k_dim)
@@ -202,16 +189,14 @@
 
       end subroutine outpost_eigenspectrum
 
-      subroutine outpost_eigenvectors(X, eigvecs, eigvals, residuals)
-         use NekVectors
-         use LinearOperators
-         use LightKrylov, krylov_atol => atol
+      subroutine outpost_eigenvectors(X, eigvals, eigvecs, residuals)
          implicit none
          include 'SIZE'
          include 'TOTAL'
 
          class(real_nek_vector), intent(in) :: X(1:k_dim + 1)
-         complex, intent(in) :: eigvecs(k_dim, k_dim), eigvals(k_dim)
+         complex, intent(in) :: eigvals(k_dim)
+         complex, intent(in) :: eigvecs(k_dim,k_dim)
          real, intent(in) :: residuals(k_dim)
          class(abstract_vector), allocatable :: nek_vector
 
@@ -224,32 +209,29 @@
       
          do i = 1, maxmodes
          
-            if(nid.eq.0)write(6,*)'Outposting eigenvector:',i!,'/',maxmodes
+            if(nid.eq.0)write(6,*)'Outposting eigenvector:',i,'/',maxmodes
             if(nid.eq.0)write(6,*)'  sigma=',real(eigvals(i))
             if(nid.eq.0)write(6,*)'  omega=',aimag(eigvals(i))
          
       !     ----- Output the real part -----
             call get_vec(nek_vector, X(1:k_dim), real(eigvecs(:, i)))
             select type(nek_vector)
-             type is(real_nek_vector)
-
-               ! alpha = nek_vector%norm()
-               ! call nek_vector%scal(1.0 / alpha)
+            type is(real_nek_vector)
                call nopcopy(vx,vy,vz,pr,t, nek_vector%vx,nek_vector%vy,nek_vector%vz,nek_vector%pr,nek_vector%t)
-      !call nopcmult(vx,vy,vz,pr,t, beta)
                call outpost2(vx,vy,vz,pr,t, nof, nRe)
                call outpost_vort(vx,vy,vz,nRv)
             end select
-           
-      !     ----- Output the real part -----
+            
+      !     ----- Output the imaginary part -----
             call get_vec(nek_vector, X(1:k_dim), imag(eigvecs(:, i)))
             select type(nek_vector)
-             type is(real_nek_vector)
+            type is(real_nek_vector)
                call nopcopy(vx,vy,vz,pr,t, nek_vector%vx,nek_vector%vy,nek_vector%vz,nek_vector%pr,nek_vector%t)
-      !call nopcmult(vx,vy,vz,pr,t, beta)
                call outpost2(vx,vy,vz,pr,t, nof, nIm)
             end select
-           
-         enddo ! i = 1, maxmodes
+            
+         end do ! i = 1, maxmodes
 
-      end subroutine outpost_eigenvectors
+         end subroutine outpost_eigenvectors
+
+      end module LinearStab

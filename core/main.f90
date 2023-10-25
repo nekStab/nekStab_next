@@ -150,6 +150,7 @@ c---------------------------------------------------------------------
 c---------------------------------------------------------------------
       subroutine nekStab
       !     nekStab main driver
+         use LinearStab, only : linear_stability_analysis
          implicit none
          include 'SIZE'
          include 'TOTAL'

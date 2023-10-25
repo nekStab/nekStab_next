@@ -1,55 +1,55 @@
-!       subroutine prepare_linearized_solver
+      subroutine prepare_linearized_solver
 
-!       implicit none
-!       include 'SIZE'
-!       include 'TOTAL'
+      implicit none
+      include 'SIZE'
+      include 'TOTAL'
 
-!       call nekgsync
+      call nekgsync
 
-! !     --> Force only single perturbation mode.
-!       if (param(31) .gt. 1) then
-!          write(6, *) 'nekStab not ready for npert > 1 -- jp loops not yet implemented. Stoppiing.'
-!          call nek_end
-!       endif
-!       param(31) = 1 ; npert = param(31)
+!     --> Force only single perturbation mode.
+      if (param(31) .gt. 1) then
+         write(6, *) 'nekStab not ready for npert > 1 -- jp loops not yet implemented. Stoppiing.'
+         call nek_end
+      endif
+      param(31) = 1 ; npert = param(31)
 
-! !     --> Force deactivate OIFS.
-!       if (ifchar) write(6, *) 'OIFS not working with linearized solver. Turning it off.'
-!       ifchar = .false. ; call bcast(ifchar, lsize)
+!     --> Force deactivate OIFS.
+      if (ifchar) write(6, *) 'OIFS not working with linearized solver. Turning it off.'
+      ifchar = .false. ; call bcast(ifchar, lsize)
 
-! !     --> Enforce CFL target for EXTk
-!       if (param(26) .gt. 1.0) then
-!          write(6, *) "Forcing target CFL to 0.5!"
-!          param(26) = 0.5d0
-!       endif
+!     --> Enforce CFL target for EXTk
+      if (param(26) .gt. 1.0) then
+         write(6, *) "Forcing target CFL to 0.5!"
+         param(26) = 0.5d0
+      endif
 
-! !     --> Set nsteps/endTime accordingly.
-!       if (param(10) .gt. 0) then
-!          if(nid.eq.0)write(6,*)'param(10),time=',param(10),time
-!          if(nid.eq.0)write(6,*)'endTime specified! Recomputing dt and nsteps to match endTime'
-!          call compute_cfl(ctarg, vx, vy, vz, 1.0d0) ! ctarg contains the sum ( ux_i / dx_i )
-!          if(nid.eq.0)write(6,*)'max spatial restriction:',ctarg
-!          dt = param(26) / ctarg ! dt given target CFL
-!          nsteps = ceiling(param(10) / dt) ! computing a safe value of nsteps
-!          dt = param(10) / nsteps ! reducing dt to match param(10)
-!          if(nid.eq.0)write(6,*)' new timeStep dt=',dt
-!          if(nid.eq.0)write(6,*)' new numSteps nsteps=',nsteps
-!          if(nid.eq.0)write(6,*)' resulting sampling period =',nsteps*dt
-!          param(12) = dt
-!          call compute_cfl(ctarg, vx, vy, vz, dt) ! C=sum(ux_i/dx_i)*dt
-!          if(nid.eq.0)write(6,*)' current CFL and target=',ctarg,param(26)
-!          lastep = 0             ! subs1.f:279 
-!          fintim = nsteps*dt
-!       endif
+!     --> Set nsteps/endTime accordingly.
+      if (param(10) .gt. 0) then
+         if(nid.eq.0)write(6,*)'param(10),time=',param(10),time
+         if(nid.eq.0)write(6,*)'endTime specified! Recomputing dt and nsteps to match endTime'
+         call compute_cfl(ctarg, vx, vy, vz, 1.0d0) ! ctarg contains the sum ( ux_i / dx_i )
+         if(nid.eq.0)write(6,*)'max spatial restriction:',ctarg
+         dt = param(26) / ctarg ! dt given target CFL
+         nsteps = ceiling(param(10) / dt) ! computing a safe value of nsteps
+         dt = param(10) / nsteps ! reducing dt to match param(10)
+         if(nid.eq.0)write(6,*)' new timeStep dt=',dt
+         if(nid.eq.0)write(6,*)' new numSteps nsteps=',nsteps
+         if(nid.eq.0)write(6,*)' resulting sampling period =',nsteps*dt
+         param(12) = dt
+         call compute_cfl(ctarg, vx, vy, vz, dt) ! C=sum(ux_i/dx_i)*dt
+         if(nid.eq.0)write(6,*)' current CFL and target=',ctarg,param(26)
+         lastep = 0             ! subs1.f:279 
+         fintim = nsteps*dt
+      endif
 
-! !     --> Force constant time step.
-!       param(12) = -abs(param(12))
+!     --> Force constant time step.
+      param(12) = -abs(param(12))
 
-! !     --> Broadcast parameters.
-!       call bcast(param, 200*wdsize)
+!     --> Broadcast parameters.
+      call bcast(param, 200*wdsize)
 
-!       return
-!       end subroutine prepare_linearized_solver
+      return
+      end subroutine prepare_linearized_solver
 
 
 

@@ -8,8 +8,10 @@
  $(OBJDIR)/fixedp.o       :$(NEKSTAB_SOURCE_ROOT)/core/fixedp.f;       $(F77) -c $(FL2) $< -o $@
  $(OBJDIR)/utils.o        :$(NEKSTAB_SOURCE_ROOT)/core/utils.f;        $(F77) -c $(FL2) $< -o $@
  $(OBJDIR)/linear_stab.o        :$(NEKSTAB_SOURCE_ROOT)/core/linear_stab.f90;        $(F77) -c $(FL2) $< -o $@
- $(OBJDIR)/main.o     :$(NEKSTAB_SOURCE_ROOT)/core/main.f90; $(F77) -c $(FL2) $< -o $@
+ $(OBJDIR)/trans_growth.o        :$(NEKSTAB_SOURCE_ROOT)/core/trans_growth.f90;        $(F77) -c $(FL2) $< -o $@
  $(OBJDIR)/forcing.o     :$(NEKSTAB_SOURCE_ROOT)/core/forcing.f90; $(F77) -c $(FL2) $< -o $@
+ $(OBJDIR)/resolvent.o        :$(NEKSTAB_SOURCE_ROOT)/core/resolvent.f90;        $(F77) -c $(FL2) $< -o $@
+ $(OBJDIR)/main.o     :$(NEKSTAB_SOURCE_ROOT)/core/main.f90; $(F77) -c $(FL2) $< -o $@
  $(OBJDIR)/IO.o           :$(NEKSTAB_SOURCE_ROOT)/core/IO.f;           $(F77) -c $(FL2) $< -o $@
  $(OBJDIR)/postproc.o     :$(NEKSTAB_SOURCE_ROOT)/core/postproc.f;      $(F77) -c $(FL2) $< -o $@
  $(OBJDIR)/newton_krylov.o     :$(NEKSTAB_SOURCE_ROOT)/core/newton_krylov.f;      $(F77) -c $(FL2) $< -o $@

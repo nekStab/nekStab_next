@@ -44,9 +44,9 @@
             procedure, pass(self), public :: axpby => cmplx_axpby
       end type cmplx_nek_vector
 
-      interface assignment(=)
-      module procedure real_copy, cmplx_copy
-      end interface
+      ! interface assignment(=)
+      ! module procedure real_copy, cmplx_copy
+      ! end interface
 
       type(real_nek_vector), save, public :: ic_nwt, fc_nwt
       real,save,allocatable,dimension(:, :),public ::uor,vor,wor
