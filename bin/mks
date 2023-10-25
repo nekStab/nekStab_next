@@ -16,13 +16,11 @@ NS_VERSION=$(git -C $NEKSTAB_SOURCE_ROOT describe --tag --long --always)
 # Compiler Detection
 #-------------------------------------------------------------------------------
 if command -v mpiifort >/dev/null 2>&1; then
-    # Intel compiler found
-    echo "Intel compiler found: $(mpiifort -v)"
+    echo "Compiler found: $(mpiifort -v)"
     FC="mpiifort"
     CC="mpiicc"
     FFLAGS+=" -extend-source" # Enables long lines.
     FFLAGS+=" -fixed" # Enables fixed-form source code, necessary as we mix .f90 files.
-    
     if [[ $(mpiicx --version 2>&1) =~ "oneapi" ]]; then
         FFLAGS+=" -qmkl"
         CC="mpiicx"
@@ -30,22 +28,10 @@ if command -v mpiifort >/dev/null 2>&1; then
     else
         FFLAGS+=" -mkl -xHost"
     fi
-
     FFLAGS+=" -g -traceback"
     USR_LFLAGS+=" -I${MKLROOT}/include -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a ${MKLROOT}/lib/intel64/libmkl_sequential.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -lpthread -lm -ldl"
 else
-    if [[ "$(uname)" == "Darwin" ]]; then
-        # On macOS with Homebrew's mpif90
-        if [[ -f "/opt/homebrew/bin/mpif90" ]]; then
-            echo "Homebrew mpif90 found"
-            FC="/opt/homebrew/bin/mpif90"
-        else
-            echo "Clang compiler found: $(clang --version | head -n1)"
-        fi
-    else
-        # On Linux, we expect gcc to be gcc
-        echo "GCC compiler found: $(gcc --version | head -n1)"
-    fi
+    echo "Compiler found: $(mpif90 --version | head -n1)"
     FC="mpif90"
     CC="mpicc"
     FFLAGS+=" -ffixed-form" # Enables fixed-form source code, necessary as we mix .f90 files.
@@ -54,7 +40,6 @@ else
     FFLAGS+=" -g" # Enables debugging information.
     FFLAGS+=" -fbacktrace" # Provides a backtrace in case of errors, useful for debugging.
     FFLAGS+=" -std=legacy -Wall" # Provides a backtrace in case of errors, useful for debugging.
-    
 fi
 
 #-------------------------------------------------------------------------------
@@ -63,11 +48,11 @@ fi
 # Lapack is a library of linear algebra routines.
 # Blas (Basic Linear Algebra Subprograms) is used by Lapack.
 
-export USR_LFLAGS+=" -llapack -lblas"
+#export USR_LFLAGS+=" -llapack -lblas"
 
 #export USR_LFLAGS+=" -L/usr/local/opt/openblas/lib"
 #export FFLAGS+=" -I/usr/local/opt/openblas/include"
-#export USR_LFLAGS+=" -lopenblas" # OpenBlas is a faster alternative to LAPACK and BLAS
+export USR_LFLAGS+=" -lopenblas" # OpenBlas is a faster alternative to LAPACK and BLAS
 
 #-------------------------------------------------------------------------------
 # Linking with LightKrylov library
@@ -88,7 +73,7 @@ case $(uname -s) in
         ;;
     Linux)
         case $(uname -p) in
-            x86_64) ar="x86_64"; FFLAGS+=" -mcmodel=large" ;;
+            x86_64) ar="x86_64"; FFLAGS+="  -mcmodel=large" ;;
             arm)    ar="arm" ;;
         esac
         ;;
@@ -111,7 +96,6 @@ USR+=" lapack_wrapper.o"
 USR+=" fixedp.o"
 USR+=" utils.o"
 USR+=" linear_stab.o"
-USR+=" trans_growth.o"
 USR+=" resolvent.o"
 USR+=" main.o"
 USR+=" forcing.o"

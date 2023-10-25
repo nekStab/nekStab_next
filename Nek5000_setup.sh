@@ -48,6 +48,21 @@ else
     echo "Skipping package installation."
 fi
 
+# Check for active Conda environment
+if [ -n "$CONDA_DEFAULT_ENV" ]; then
+    echo "Active Conda environment detected: $CONDA_DEFAULT_ENV"
+    read -p "Do you want to update this Conda environment? (y/n): " conda_update
+    if [ "$conda_update" == "y" ] || [ "$conda_update" == "Y" ]; then
+        #conda update --all
+        conda install -c conda-forge fortran-compiler openmpi libopenblas
+    else
+        echo "Skipping Conda environment update."
+    fi
+else
+    echo "No active Conda environment detected."
+fi
+
+
 # Clone Nek5000 repository
 if [ "$should_clone" == "yes" ]; then
     read -p "Do you want to clone the Nek5000 repository? (y/n): " confirm

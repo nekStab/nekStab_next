@@ -72,9 +72,7 @@ fpm run --verbose
     #fpm build --verbose  --compiler 'mpiifort' --flag "O0 -g -traceback -Wall"
 
 else
-
-    fpm install --verbose --flag "-O3 -march=native -funroll-loops -ffast-math"
-    fpm build --verbose  --compiler 'mpif90'  --flag "-O3 -march=native -funroll-loops -ffast-math"
+    fpm build --flag "-O3 -march=native -funroll-loops -ffast-math"
     #fpm build --verbose  --compiler 'mpif90'  --flag "-Wall -Wextra -g -fbacktrace -fbounds-check"
 
 fi
