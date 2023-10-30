@@ -345,7 +345,7 @@
                include 'ADJOINT'
 
                real :: omega
-               integer :: n
+               integer :: n, k
 
                omega = 2.0D0 * pi / fintim
                n=nx1*ny1*nz1*nelv
@@ -354,14 +354,16 @@
                ! call rzero(fcy(:),n)
                ! if (if3D) call rzero(fcz(:),n)
                ! if (ifpo) call rzero(fcp(:),nx2*ny2*nz2*nelv)
-               ! if (ifto) call rzero(fct(:,1),nt)
+               ! if (ifto) call rzero(fct(1,1),nx1*ny1*nz1*nelt)
                ! if (ldimt > 1) then
                !    do k=1,npscal
                !       if(ifpsco(k)) call rzero(fct(:,k+1),lx1*ly1*lz1*nelfld(k+2))
                !    enddo
                ! end if
 
-               !F_real*cos(omega*t) + F_imag*sin(omega*t)
+               ! fcx = fcox*cos(omega*t) - fcoy*sin(omega*t)
+               ! fcy = fcox*sin(omega*t) + fcoy*cos(omega*t)
+               ! fcz = fcoz*cos(omega*t) - fcoy*sin(omega*t)
 
                ! call cmult(fcx(:),sin(omega*t),n)
                ! call cmult(fcy(:),cos(omega*t),n)
@@ -396,15 +398,7 @@
             logical, save :: init
             data             init /.false./
 
-            ! select type (vec_in)
-            ! type is (real_nek_vector)
-            !   select type (vec_out)
-            !   type is (real_nek_vector)
-
             call resolvent_solver('DIRECT', init, vec_in, vec_out)
-
-            !      end select
-            !   end select
 
          end subroutine direct_map
 
@@ -422,15 +416,7 @@
             logical, save :: init
             data             init /.false./
 
-            ! select type (vec_in)
-            ! type is (real_nek_vector)
-            !   select type (vec_out)
-            !   type is (real_nek_vector)
-
             call resolvent_solver('ADJOINT', init, vec_in, vec_out)
-
-            !      end select
-            !   end select
 
          end subroutine adjoint_map
 
@@ -467,7 +453,7 @@
                allocate(b, source=vec_in) ; call b%zero()
 
                !> Sets the forcing spacial support.
-               call nopcopy(fcx,fcy,fcz,fcp,fct,vec_in%vx,vec_in%vy,vec_in%vz,vec_in%pr,vec_in%t)
+               call nopcopy(fcox,fcoy,fcoz,fcop,fcot,vec_in%vx,vec_in%vy,vec_in%vz,vec_in%pr,vec_in%t)
             end select
 
             !> Compute int_{0}^t exp( (t-s)*A ) * f(s) ds

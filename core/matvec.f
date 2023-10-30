@@ -268,7 +268,7 @@
           include 'ADJOINT'
 
           !integer, parameter :: findiff_order = 2
-          real, dimension(findiff_order) :: coefs
+          real, dimension(findiff_order) :: coeficients
           real, dimension(findiff_order) :: amplitudes
 
           type(krylov_vector) :: q, f, pert
@@ -294,14 +294,14 @@
 
           if (findiff_order .eq. 2) then
               amplitudes(1) = 1 ; amplitudes(2) = -1
-              coefs(1) = 1 ; coefs(2) = -1
-              coefs = coefs / 2.0D+00
+              coeficients(1) = 1 ; coeficients(2) = -1
+              coeficients = coeficients / 2.0D+00
           else if (findiff_order .eq. 4) then
               amplitudes(1) = 1 ; amplitudes(2) = -1
               amplitudes(3) = 2 ; amplitudes(4) = -2
-              coefs(1) = 8 ; coefs(2) = -8
-              coefs(3) = -1 ; coefs(4) = 1
-              coefs = coefs/12.0D+00
+              coeficients(1) = 8 ; coeficients(2) = -8
+              coeficients(3) = -1 ; coeficients(4) = 1
+              coeficients = coeficients/12.0D+00
           endif
           amplitudes = amplitudes * epsilon0
 
@@ -382,7 +382,7 @@
 
               !     --> Copy the solution and compute the approximation of the Fréchet dérivative.
               call nopcopy(work%vx, work%vy, work%vz, work%pr, work%t, vx, vy, vz, pr, t)
-              call k_cmult(work, coefs(i))
+              call k_cmult(work, coeficients(i))
               call k_add2(f, work)
 
           enddo

@@ -54,6 +54,13 @@
      $    ,fct(lx1,ly1,lz1,lelt,ldimt)
       common /nStab_forces/ fcx, fcy, fcz, fcp, fct !general forcing array
 
+      real fcox(lx1,ly1,lz1,lelv)
+     $    ,fcoy(lx1,ly1,lz1,lelv)
+     $    ,fcoz(lx1,ly1,lz1,lelv)
+     $    ,fcop(lx2,ly2,lz2,lelv)
+     $    ,fcot(lx1,ly1,lz1,lelt,ldimt)
+      common /nStab_forces/ fcox, fcoy, fcoz, fcop, fcot !resolvent basis forcing array
+
       real spng_fn(lx1*ly1*lz1*lelv)       ! sponge function
      $    ,spng_vr(lx1*ly1*lz1*lelv,ldim)  ! reference velocity field
      $    ,spng_vt(lx1*ly1*lz1*lelt,ldimt) ! reference scalar fields

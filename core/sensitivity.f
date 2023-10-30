@@ -137,17 +137,17 @@
 
       character(len=80)   :: filename
 
-      real :: alpha, beta, gamma, delta, epsilon, zeta, eta, theta, iota, kappa
-      alpha   = 0.0d0
-      beta    = 0.0d0
-      gamma   = 0.0d0
-      delta   = 0.0d0
-      epsilon = 0.0d0
-      zeta    = 0.0d0
-      eta     = 0.0d0
-      theta   = 0.0d0
-      iota    = 0.0d0
-      kappa   =-1.0d0
+      ! real :: alpha, beta, gamma, delta, epsilon, zeta, eta, theta, iota, kappa
+      ! alpha   = 0.0d0
+      ! beta    = 0.0d0
+      ! gamma   = 0.0d0
+      ! delta   = 0.0d0
+      ! epsilon = 0.0d0
+      ! zeta    = 0.0d0
+      ! eta     = 0.0d0
+      ! theta   = 0.0d0
+      ! iota    = 0.0d0
+      ! kappa   =-1.0d0
 
       ifto=.false.;ifpo=.false.
 
