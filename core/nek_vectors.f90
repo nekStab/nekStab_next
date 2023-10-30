@@ -65,8 +65,8 @@
             subroutine real_copy(out, from)
             class(real_nek_vector), intent(in) :: from
             class(real_nek_vector), intent(out) :: out
-                  call nopcopy(out%vx,out%vy,out%vz,out%pr,out%t, from%vx,from%vy,from%vz,from%pr,from%t)
-                  out%time = from%time
+            call nopcopy(out%vx,out%vy,out%vz,out%pr,out%t, from%vx,from%vy,from%vz,from%pr,from%t)
+            out%time = from%time
             return
             end subroutine real_copy
 

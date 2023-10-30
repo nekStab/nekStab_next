@@ -261,16 +261,17 @@
                   if(nid .eq. 0) then
                      write(*,*)''
                      if(findiff_order>1)then
-                        write(6,"(' ', A20,' (',I1,'/',I1,')' ':', I6, '/', I6, ' from', I5, '/', I5, ' [', I1, ']')") trim(solver_type),i,findiff_order,istep, nsteps, krylov_counter, k_dim, schur_cnt
+                        write(6,"(' ', A17,' (',I1,'/',I1,')' ':', I6, '/', I6, ' from', I5, '/', I5, ' [', I1, ']')") solver_type,i,findiff_order,istep, nsteps, krylov_counter, k_dim, schur_cnt
                      else
-                        write(6,"(' ', A20, ':', I6, '/', I6, ' from', I5, '/', I5, ' [', I1, ']')") trim(solver_type), istep, nsteps, krylov_counter, k_dim, schur_cnt
+                        write(6,"(' ', A17, ':', I6, '/', I6, ' from', I5, '/', I5, ' [', I1, ']')") solver_type, istep, nsteps, krylov_counter, k_dim, schur_cnt
                      end if
                   end if
 
                   ! --> Integrate in time.
-                  if(INDEX(solver_type, 'RESOLVENT') > 0)then
-                     if (nid.eq.0)write(*,*)' resolvent forcing'
-                     call compute_resolvent_forcing() ! forcing added to fcx, fcy, fcz, fct
+                  omega_t = 0.0D0
+                  if (INDEX(solver_type, 'RESOLVENT') > 0) then
+                     omega_t = (2.0D0 * pi / fintim) * time
+                     !write(*,*) 'omega_t=',omega_t
                   endif
                   call nekstab_usrchk()
                   call nek_advance()
@@ -336,48 +337,6 @@
 
             krylov_counter = krylov_counter + 1
 
-         contains
-
-            subroutine compute_resolvent_forcing
-               implicit none
-               include 'SIZE'
-               include 'TOTAL'
-               include 'ADJOINT'
-
-               real :: omega
-               integer :: n, k
-
-               omega = 2.0D0 * pi / fintim
-               n=nx1*ny1*nz1*nelv
-
-               ! call rzero(fcx(:),n)
-               ! call rzero(fcy(:),n)
-               ! if (if3D) call rzero(fcz(:),n)
-               ! if (ifpo) call rzero(fcp(:),nx2*ny2*nz2*nelv)
-               ! if (ifto) call rzero(fct(1,1),nx1*ny1*nz1*nelt)
-               ! if (ldimt > 1) then
-               !    do k=1,npscal
-               !       if(ifpsco(k)) call rzero(fct(:,k+1),lx1*ly1*lz1*nelfld(k+2))
-               !    enddo
-               ! end if
-
-               ! fcx = fcox*cos(omega*t) - fcoy*sin(omega*t)
-               ! fcy = fcox*sin(omega*t) + fcoy*cos(omega*t)
-               ! fcz = fcoz*cos(omega*t) - fcoy*sin(omega*t)
-
-               ! call cmult(fcx(:),sin(omega*t),n)
-               ! call cmult(fcy(:),cos(omega*t),n)
-               ! if (if3D) call cmult(fcz(:),sin(omega*t),n)
-               ! if (ifpo) call cmult(fcp(:),c,nx2*ny2*nz2*nelv)
-               ! if (ifto) call cmult(fct(:,1),c,lx1*ly1*lz1*nelfld(2))
-               ! if (ldimt > 1) then
-               !    do k=1,npscal
-               !          if(ifpsco(k)) call cmult(a5(1,k+1),c,lx1*ly1*lz1*nelfld(k+2))
-               !    enddo
-               ! endif
-
-            end subroutine compute_resolvent_forcing
-
          end subroutine nekstab_solver
 
          !-------------------------------------------------------------------
@@ -387,10 +346,6 @@
          subroutine direct_map(self, vec_in, vec_out)
 
             implicit none
-            include 'SIZE'
-            include 'TOTAL'
-            include 'ADJOINT'
-
             class(resolvent_op)   , intent(in)  :: self
             class(abstract_vector), intent(in)  :: vec_in
             class(abstract_vector), intent(out) :: vec_out
@@ -405,10 +360,6 @@
          subroutine adjoint_map(self, vec_in, vec_out)
 
             implicit none
-            include 'SIZE'
-            include 'TOTAL'
-            include 'ADJOINT'
-
             class(resolvent_op)   , intent(in)  :: self
             class(abstract_vector), intent(in)  :: vec_in
             class(abstract_vector), intent(out) :: vec_out
@@ -439,10 +390,13 @@
             class(real_nek_vector), allocatable :: b
             type(gmres_opts)          :: opts
             integer                   :: info
-            !real :: tol
-            character(len=10) :: case
+            real :: tol
+            character(len=17) :: case
 
-            !tol = max(param(21),param(22))
+            logical, save :: init2
+            data             init2 /.false./
+
+            tol = max(param(21),param(22))
             Id = identity_linop()
             A = exponential_prop(fintim)
 
@@ -453,30 +407,29 @@
                allocate(b, source=vec_in) ; call b%zero()
 
                !> Sets the forcing spacial support.
-               call nopcopy(fcox,fcoy,fcoz,fcop,fcot,vec_in%vx,vec_in%vy,vec_in%vz,vec_in%pr,vec_in%t)
+               call nopcopy(fReu,fRev,fRew,fRep,fRet, real(vec_in%vx),real(vec_in%vy),real(vec_in%vz),real(vec_in%pr),real(vec_in%t))
+               call nopcopy(fImu,fImv,fImw,fImp,fImt, vec_in%vx,vec_in%vy,vec_in%vz,vec_in%pr,vec_in%t)
+
             end select
 
-            !> Compute int_{0}^t exp( (t-s)*A ) * f(s) ds
-            call setupLinearSolver(solver_type, init)
+            !> Compute int_{0}^time exp( (t-s)*A ) * f(s) ds
+            call setupLinearSolver(solver_type, init2)
             case = 'RESOLVENT ' // trim(solver_type)
 
             select type (vec_in_casted => vec_in)
              type is (real_nek_vector)
-               call nekstab_solver(case, init, vec_in_casted, b)
+               call nekstab_solver(case, init2, vec_in_casted, b)
             end select
 
             !> GMRES solve to compute the post-transient response.
-
-            opts = gmres_opts(verbose=.false.)!, atol=atol, rtol=rtol)
-
+            opts = gmres_opts(verbose=.true., atol=tol, rtol=tol)
             if (solver_type == 'DIRECT') then
-
-               S = axpby_linop(Id, A, 1.0_wp, -1.0_wp)
+               S = axpby_linop(Id, A, 1.0D0, -1.0D0)
                call gmres(S, b, vec_out, info, options=opts)
 
             elseif(solver_type == 'ADJOINT') then
 
-               S = axpby_linop(Id, A, 1.0_wp, -1.0_wp, .false., .true.)
+               S = axpby_linop(Id, A, 1.0D0, -1.0D0, .false., .true.)
                call gmres(S, b, vec_out, info, options=opts, transpose=.false.)
 
             endif

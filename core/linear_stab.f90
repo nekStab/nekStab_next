@@ -40,7 +40,7 @@
                evop = 'a'; transpose = .true.
             end if
 
-            call eigs(A, X, eigvecs, eigvals, residuals, info, transpose=transpose, verbosity=.false.)!, nev=schur_tgt, tolerance=eigen_tol)
+            call eigs(A, X, eigvecs, eigvals, residuals, info, verbosity=.false., nev=schur_tgt, tolerance=eigen_tol, transpose=transpose)
 
             call outpost_eigenspectrum(eigvals, residuals, 'Spectre_H'//trim(evop)//'.dat')
 
@@ -73,7 +73,7 @@
             end do
             call prepare_seed(U)
 
-            call svds(A, U, V, uvecs, vvecs, sigma, residuals, info)!, nev=10, tolerance=rtol)
+            call svds(A, U, V, uvecs, vvecs, sigma, residuals, info, nev=schur_tgt, tolerance=eigen_tol)
             call outpost_singvals(sigma(:), residuals(:), 'trans_growth_gain.dat')
 
          end subroutine transient_growth_analysis
@@ -100,7 +100,7 @@
             end do
             call prepare_seed(U)
             
-            call svds(R, U, V, uvecs, vvecs, sigma, residuals, info)!, nev=10, tolerance=rtol)
+            call svds(R, U, V, uvecs, vvecs, sigma, residuals, info, nev=schur_tgt, tolerance=eigen_tol)
             sigma = sigma ** 2
             call outpost_singvals(sigma(:), residuals(:), 'sigma_resolvent.dat')
 
@@ -133,7 +133,7 @@
             call nekgsync
 
             ! Update UPO period from base flow file if Floquet mode is activated
-            if (istep == 0 .and. (isFloquetDirect .or. isFloquetAdjoint .or. isFloquetDirectAdjoint)) then
+            if (istep == 0 .and. (isFloquetDirect .or. isFloquetAdjoint .or. isFloquetDirectAdjoint .or. isFloquetResolvent)) then
                param(10) = time
                if (nid == 0) then
                   write(*,*) 'Floquet mode activated. Getting endTime from file: ', param(10)
