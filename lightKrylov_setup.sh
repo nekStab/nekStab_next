@@ -61,19 +61,18 @@ else
     cd LightKrylov
 fi
 
-fpm clean
+fpm clean --all
+
+# conda install -c conda-forge fortran-compiler openmpi libopenblas fpm
 
 if command -v mpiifort >/dev/null 2>&1; then
 
-fpm build --verbose 
-fpm run --verbose
-
-    fpm build --verbose  --compiler 'mpiifort' --flag "-Ofast -xHost -g -traceback"
-    #fpm build --verbose  --compiler 'mpiifort' --flag "O0 -g -traceback -Wall"
+    fpm install --compiler 'mpiifort' --flag "-Ofast -xHost -g -traceback"
+    #fpm test --verbose  --compiler 'mpiifort' --flag "O0 -g -traceback -Wall"
 
 else
-    fpm build --flag "-O3 -march=native -funroll-loops -ffast-math"
-    #fpm build --verbose  --compiler 'mpif90'  --flag "-Wall -Wextra -g -fbacktrace -fbounds-check"
+    fpm install --compiler 'mpif90' --flag "-O3 -march=native -funroll-loops -ffast-math"
+    #fpm test --verbose --flag "-Wall -Wextra -g -fbacktrace -fbounds-check"
 
 fi
 

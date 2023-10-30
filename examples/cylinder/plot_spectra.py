@@ -82,18 +82,18 @@ if __name__ == '__main__':
     plt.xticks(xrz,xlabels);plt.xlim(-1.1,1.1);plt.xlabel(r'$\Re (\mu)$')
     plt.yticks(xrz,xlabels);plt.ylim(-1.1,1.1);plt.ylabel(r'$\Im (\mu)$')
 
-    f = Spectre('Spectre_Hd.dat')
-    plot_H(plt, f.R, f.I, f.r, 20, 'k', 'o', r'$Re=50$')
-    
     f = Spectre('/home/cobra/nekStab/examples/cylinder/stability/direct/Spectre_Hd.dat')
-    plot_H(plt, f.R, f.I, f.r, 12, 'green', 'o', r'$Re=50$')
+    plot_H(plt, f.R, f.I, f.r, 22, 'k', 'o', r'$Re=50$ nekStab')
+    
+    f = Spectre('Spectre_Hd.dat')
+    plot_H(plt, f.R, f.I, f.r, 12, 'g', 'o', r'$Re=50$')
+    
+    f = Spectre('Spectre_Hf.dat')
+    plot_H(plt, f.R, f.I, f.r, 12, 'm', 'd', r'$Re=50$ FD=2')
     
     f = Spectre('Spectre_Ha.dat')
-    plot_H(plt, f.R, f.I, f.r, 20, 'red', '+', r'$Re=50^{\dagger}$')
+    plot_H(plt, f.R, f.I, f.r, 20, 'r', '+', r'$Re=50^{\dagger}$')
     
-    
-    
-
     fname='Spectre_H.'+formt
     plt.legend(loc='best',fontsize=6)
     plt.savefig(fname,format=formt,dpi=qual,bbox_inches=ajust);print('Saving '+fname);plt.close()
@@ -103,14 +103,17 @@ if __name__ == '__main__':
     plt.ylabel(r'$\sigma$');#plt.xlim(-1,1)
     plt.xlabel(r'$f=\omega/2\pi$'); plt.ylim(-0.4,0.3)
 
-    f = Spectre('Spectre_NSd.dat')
-    plot_NS(plt, f.R, f.I, f.r, True, 12, 'k', 'o', r'$Re=50$')
-    
     f = Spectre('/home/cobra/nekStab/examples/cylinder/stability/direct/Spectre_NSd.dat')
-    plot_NS(plt, f.R, f.I, f.r, True, 12, 'green', 'o', r'$Re=50$')
+    plot_NS(plt, f.R, f.I, f.r, True, 22, 'k', 'o', r'$Re=50$ nekStab')
+
+    f = Spectre('Spectre_NSd.dat')
+    plot_NS(plt, f.R, f.I, f.r, True, 12, 'g', 'o', r'$Re=50$')
     
+    f = Spectre('Spectre_NSf.dat')
+    plot_NS(plt, f.R, f.I, f.r, True, 12, 'm', 'd', r'$Re=50$ FD=2')
+
     f = Spectre('Spectre_NSa.dat')
-    plot_NS(plt, f.R, f.I, f.r, True, 20, 'red', '+', r'$Re=50^{\dagger}$')
+    plot_NS(plt, f.R, f.I, f.r, True, 20, 'r', '+', r'$Re=50^{\dagger}$')
 
     fname='Spectre_NS.'+formt
     plt.legend(loc='best',fontsize=6)

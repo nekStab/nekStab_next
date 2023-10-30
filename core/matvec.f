@@ -267,7 +267,7 @@
           include 'TOTAL'
           include 'ADJOINT'
 
-          integer, parameter :: findiff_order = 2
+          !integer, parameter :: findiff_order = 2
           real, dimension(findiff_order) :: coefs
           real, dimension(findiff_order) :: amplitudes
 

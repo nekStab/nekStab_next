@@ -35,11 +35,12 @@
 
             if (isDirect .or. isFloquetDirect) then
                evop = 'd'; transpose = .false.
+               if (findiff_order>1) evop = 'f'
             elseif (isAdjoint .or. isFloquetAdjoint) then
                evop = 'a'; transpose = .true.
             end if
 
-            call eigs(A, X, eigvecs, eigvals, residuals, info, transpose=transpose, verbosity=.true.)!, nev=schur_tgt, tolerance=eigen_tol)
+            call eigs(A, X, eigvecs, eigvals, residuals, info, transpose=transpose, verbosity=.false.)!, nev=schur_tgt, tolerance=eigen_tol)
 
             call outpost_eigenspectrum(eigvals, residuals, 'Spectre_H'//trim(evop)//'.dat')
 
@@ -61,16 +62,19 @@
             real :: residuals(k_dim), alpha
             integer :: info, i
 
+            call prepare_base_flow
+            call set_linear_solver
+            A = exponential_prop(fintim)
+
             allocate(U(k_dim+1)) ; allocate(V(k_dim+1))
             sigma(:) = 0.0D0 ; uvecs(:,:) = 0.0D0 ; vvecs(:,:) = 0.0D0 ; residuals(:) = 0.0D0
             do i = 1, size(U)
                call U(i)%zero() ; call V(i)%zero()
             end do
-
             call prepare_seed(U)
-            A = exponential_prop(fintim)
+
             call svds(A, U, V, uvecs, vvecs, sigma, residuals, info)!, nev=10, tolerance=rtol)
-            call outpost_singvals(sigma, residuals, 'trans_growth_gain.dat')
+            call outpost_singvals(sigma(:), residuals(:), 'trans_growth_gain.dat')
 
          end subroutine transient_growth_analysis
 
@@ -85,17 +89,20 @@
             real :: residuals(k_dim), alpha
             integer :: info, i
 
+            call prepare_base_flow
+            call set_linear_solver
+            R = resolvent_op(fintim)
+
             allocate(U(k_dim+1)) ; allocate(V(k_dim+1))
             sigma(:) = 0.0D0 ; uvecs(:,:) = 0.0D0 ; vvecs(:,:) = 0.0D0 ; residuals(:) = 0.0D0
             do i = 1, size(U)
                call U(i)%zero() ; call V(i)%zero()
             end do
-
             call prepare_seed(U)
-            R = resolvent_op(fintim)
+            
             call svds(R, U, V, uvecs, vvecs, sigma, residuals, info)!, nev=10, tolerance=rtol)
             sigma = sigma ** 2
-            call outpost_singvals(sigma, residuals, 'sigma_resolvent.dat')
+            call outpost_singvals(sigma(:), residuals(:), 'sigma_resolvent.dat')
 
          end subroutine resolvent_analysis
 
@@ -254,7 +261,9 @@
 
             if (nid.eq.0) then
                open(unit=10, file=trim(filename), status='replace', form='formatted')
-               write(10, "(2E15.7)") sigma(i), residuals(i)
+               do i = 1, size(sigma)
+                  write(10, "(2E15.7)") sigma(i), residuals(i)
+               end do
                close(10)
             end if
 
@@ -265,7 +274,7 @@
             include 'SIZE'
             include 'TOTAL'
 
-            class(real_nek_vector), intent(in) :: X(1:k_dim + 1)
+            class(real_nek_vector), intent(in) :: X(k_dim + 1)
             complex, intent(in) :: eigvals(k_dim)
             complex, intent(in) :: eigvecs(k_dim,k_dim)
             real, intent(in) :: residuals(k_dim)
@@ -295,7 +304,7 @@
                end select
 
                !     ----- Output the imaginary part -----
-               call get_vec(nek_vector, X(1:k_dim), imag(eigvecs(:, i)))
+               call get_vec(nek_vector, X(1:k_dim), aimag(eigvecs(:, i)))
                select type(nek_vector)
                 type is(real_nek_vector)
                   call nopcopy(vx,vy,vz,pr,t, nek_vector%vx,nek_vector%vy,nek_vector%vz,nek_vector%pr,nek_vector%t)
