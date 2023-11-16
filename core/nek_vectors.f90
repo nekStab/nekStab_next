@@ -32,9 +32,7 @@
       end type real_nek_vector
 
       type, extends(abstract_vector), public :: cmplx_nek_vector
-            complex, dimension(lv) :: vx, vy, vz
-            complex, dimension(lp) :: pr
-            complex, dimension(lv,ldimt) :: t
+            type(real_nek_vector) :: real, imag 
             real :: time
       contains
             private
@@ -146,6 +144,9 @@
             subroutine cmplx_copy(out, from)
             class(cmplx_nek_vector), intent(in) :: from
             class(cmplx_nek_vector), intent(out) :: out
+            call nopcopy(out%real%vx,out%real%vy,out%real%vz,out%real%pr,out%real%t, from%real%vx,from%real%vy,from%real%vz,from%real%pr,from%real%t)
+            call nopcopy(out%imag%vx,out%imag%vy,out%imag%vz,out%imag%pr,out%imag%t, from%imag%vx,from%imag%vy,from%imag%vz,from%imag%pr,from%imag%t)
+            out%time = from%time
             end subroutine cmplx_copy
 
             subroutine cmplx_zero(self)
@@ -153,7 +154,10 @@
             include 'SIZE'      
             include 'TOTAL'
             class(cmplx_nek_vector), intent(inout) :: self
+            call noprzero(self%real%vx,self%real%vy,self%real%vz,self%real%pr,self%real%t)
+            call noprzero(self%imag%vx,self%imag%vy,self%imag%vz,self%imag%pr,self%imag%t)
             self%time = 0.0D0
+            return
             end subroutine cmplx_zero
             
             real function cmplx_dot(self, vec) result(alpha)
@@ -162,9 +166,11 @@
             include 'TOTAL'
             class(cmplx_nek_vector), intent(in) :: self
             class(abstract_vector), intent(in) :: vec
-            integer m
-            nv = nx1*ny1*nz1*nelv
-            nt = nx1*ny1*nz1*nelt
+            select type(vec)
+            type is(cmplx_nek_vector)
+            alpha = real_dot(self%real, vec%real)
+            alpha = alpha + real_dot(self%imag, vec%imag)
+            end select
             end function cmplx_dot
             
             subroutine cmplx_scal(self, alpha)
@@ -173,6 +179,9 @@
             include 'TOTAL'
             class(cmplx_nek_vector), intent(inout) :: self
             real, intent(in) :: alpha
+            call nopcmult(self%real%vx,self%real%vy,self%real%vz,self%real%pr,self%real%t, alpha)
+            call nopcmult(self%imag%vx,self%imag%vy,self%imag%vz,self%imag%pr,self%imag%t, alpha)
+            self%time = self%time * alpha
             end subroutine cmplx_scal
             
             subroutine cmplx_axpby(self, alpha, vec, beta)
@@ -182,6 +191,12 @@
             class(cmplx_nek_vector), intent(inout) :: self
             class(abstract_vector), intent(in) :: vec
             real , intent(in) :: alpha, beta
+            select type(vec)
+            type is(cmplx_nek_vector)
+            call nopaxpby(self%real%vx,self%real%vy,self%real%vz,self%real%pr,self%real%t,alpha,vec%real%vx,vec%real%vy,vec%real%vz,vec%real%pr,vec%real%t,beta)
+            call nopaxpby(self%imag%vx,self%imag%vy,self%imag%vz,self%imag%pr,self%imag%t,alpha,vec%imag%vx,vec%imag%vy,vec%imag%vz,vec%imag%pr,vec%imag%t,beta)
+            end select
+            return
             end subroutine cmplx_axpby
 
       end module NekVectors

@@ -138,7 +138,7 @@
             call nekgsync
 
             ! Update UPO period from base flow file if Floquet mode is activated
-            if (istep == 0 .and. (isFloquetDirect .or. isFloquetAdjoint .or. isFloquetDirectAdjoint .or. isFloquetResolvent)) then
+            if (istep == 0 .and. (isFloquetDirect .or. isFloquetAdjoint .or. isFloquetTransientGrowth .or. isFloquetResolvent)) then
                param(10) = time
                if (nid == 0) then
                   write(*,*) 'Floquet mode activated. Getting endTime from file: ', param(10)

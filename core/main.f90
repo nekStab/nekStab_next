@@ -229,8 +229,8 @@ c---------------------------------------------------------------------
             isAdjoint = (uparam(1) .eq. 3.2)
             isFloquetAdjoint = (uparam(1) .eq. 3.21)
 
-            isDirectAdjoint = (uparam(1) .eq. 3.3)      
-            isFloquetDirectAdjoint = (uparam(1) .eq. 3.31)
+            isTransientGrowth = (uparam(1) .eq. 3.3)      
+            isFloquetTransientGrowth = (uparam(1) .eq. 3.31)
 
             isResolvent = (uparam(1) .eq. 3.4)
             isFloquetResolvent = (uparam(1) .eq. 3.41)
@@ -240,13 +240,13 @@ c---------------------------------------------------------------------
             !       write(6,*) 'Krylov-Schur for Direct LNSE...'
             !    elseif (isAdjoint) then
             !       write(6,*) 'Krylov-Schur for Adjoint LNSE...'
-            !    elseif (isDirectAdjoint) then
+            !    elseif (isTransientGrowth) then
             !       write(6,*) 'Krylov-Schur for Direct-Adjoint LNSE...'
             !    elseif (isFloquetDirect) then
             !       write(6,*) 'Krylov-Schur for Direct LNSE in Floquet...'
             !    elseif (isFloquetAdjoint) then
             !       write(6,*) 'Krylov-Schur for Adjoint LNSE in Floquet...'
-            !    elseif (isFloquetDirectAdjoint) then
+            !    elseif (isFloquetTransientGrowth) then
             !       write(6,*) 'Krylov-Schur for Direct-Adjoint LNSE in Floquet...'
             !    else
             !       write(6,*) 'Unrecognized option...'
@@ -256,7 +256,7 @@ c---------------------------------------------------------------------
 
             if(isDirect.or.isFloquetDirect.or.isAdjoint.or.isFloquetAdjoint)then
                call linear_stability_analysis
-            elseif(isDirectAdjoint.or.isFloquetDirectAdjoint)then
+            elseif(isTransientGrowth.or.isFloquetTransientGrowth)then
                call transient_growth_analysis
             elseif(isResolvent.or.isFloquetResolvent)then
                call resolvent_analysis

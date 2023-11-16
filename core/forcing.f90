@@ -16,10 +16,20 @@ c-----------------------------------------------------------------------
       if (if3D) ffz = ffz + fcz(ix,iy,iz,iel)
 
       ! here we add harmonic forcing for Resolvent case
-      if (omega_t > 0) then
-         ffx = ffx + real(fRu(ix,iy,iz,iel))*cos(omega_t) + aimag(fRu(ix,iy,iz,iel))*sin(omega_t)
-         ffy = ffy + real(fRv(ix,iy,iz,iel))*cos(omega_t) + aimag(fRv(ix,iy,iz,iel))*sin(omega_t)
-         if (if3D) ffz = ffz + real(fRw(ix,iy,iz,iel))*cos(omega_t) + aimag(fRw(ix,iy,iz,iel))*sin(omega_t)
+      if (omega_t .ne. 0.0D0) then
+         if (omega_t > 0.0D0) then ! (real part)
+    
+            ffx = ffx + real(fRu(ix,iy,iz,iel))*cos(omega_t) - aimag(fRu(ix,iy,iz,iel))*sin(omega_t)
+            ffy = ffy + real(fRv(ix,iy,iz,iel))*cos(omega_t) - aimag(fRv(ix,iy,iz,iel))*sin(omega_t)
+            if (if3D) ffz = ffz + real(fRw(ix,iy,iz,iel))*cos(omega_t) - aimag(fRw(ix,iy,iz,iel))*sin(omega_t)
+   
+         else ! omega_t < 0 (imag part)
+          
+            ffx = ffx + real(fRu(ix,iy,iz,iel))*sin(omega_t) + aimag(fRu(ix,iy,iz,iel))*cos(omega_t)
+            ffy = ffy + real(fRv(ix,iy,iz,iel))*sin(omega_t) + aimag(fRv(ix,iy,iz,iel))*cos(omega_t)
+            if (if3D) ffz = ffz + real(fRw(ix,iy,iz,iel))*sin(omega_t) + aimag(fRw(ix,iy,iz,iel))*cos(omega_t)
+   
+         endif 
       endif 
 
       if (spng_st.ne.0) then

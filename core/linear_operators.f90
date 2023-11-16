@@ -71,7 +71,7 @@
                if (findiff_order == 2) then ! coefs and amps allocated with 4 elements
                   ampls = [1.0D0, -1.0D0, 0.0D0, 0.0D0]
                   coefs = [1.0D0, -1.0D0, 0.0D0, 0.0D0] / 2.0D0
-               ! For 4th-order finite difference
+                  ! For 4th-order finite difference
                else if (findiff_order == 4) then
                   ampls = [1.0D0, -1.0D0, 2.0D0, -2.0D0]
                   coefs = [8.0D0, -8.0D0, -1.0D0, 1.0D0] / 12.0D0
@@ -120,11 +120,11 @@
             if (solver_type == 'DIRECT FD') ifpert = .false. ! no need for linearized solver
             if (solver_type == 'ADJOINT') ifadj = .true. ! turn on adjoint solver
 
-            if (isFloquetDirect .or. isFloquetAdjoint .or. isFloquetDirectAdjoint .or. isNewtonPO .or. isNewtonPO_T) then
+            if (isFloquetDirect .or. isFloquetAdjoint .or. isFloquetTransientGrowth .or. isNewtonPO .or. isNewtonPO_T) then
                ifbase = .true. ! turn on nonlinear solver for Floquet
 
                ! in the direct/adjoint mode the nonlinear solution is already stored
-               if (solver_type == 'ADJOINT' .and. isFloquetDirectAdjoint) orbit_alocated=.true.
+               if (solver_type == 'ADJOINT' .and. isFloquetTransientGrowth) orbit_alocated=.true.
 
                ! turn off nonlinear solver if criteria met
                if (ifstorebase .and. orbit_alocated) ifbase = .false.
@@ -144,7 +144,7 @@
                   orbit_alocated = .true.
                end if
 
-            end if 
+            end if
 
          end subroutine
 
@@ -333,7 +333,7 @@
             class(exponential_prop), allocatable :: A
             class(identity_linop), allocatable :: Id
             class(axpby_linop), allocatable :: S
-            class(cmplx_nek_vector), allocatable :: b
+            class(real_nek_vector), allocatable :: b
             type(gmres_opts)          :: opts
             integer                   :: info
             real :: tol
@@ -344,37 +344,41 @@
 
             select type (vec_in)
              type is (cmplx_nek_vector)
+             select type (vec_out)
+             type is (cmplx_nek_vector)
 
                !> Compute the right-hand side vector for gmres.
-               allocate(b, source=vec_in) ; call b%zero()
+               allocate(b, source=vec_in%real) ; call b%zero()
 
                !> Sets the forcing spacial support.
-               call nopcopy(real(fRu),real(fRv),real(fRw),real(fRp),real(fRt), real(vec_in%vx),real(vec_in%vy),real(vec_in%vz),real(vec_in%pr),real(vec_in%t))
-               call nopcopy(aimag(fRu),aimag(fRv),aimag(fRw),aimag(fRp),aimag(fRt), aimag(vec_in%vx),aimag(vec_in%vy),aimag(vec_in%vz),aimag(vec_in%pr),aimag(vec_in%t))
+               call nopcopy(real(fRu),real(fRv),real(fRw),real(fRp),real(fRt), vec_in%real%vx,vec_in%real%vy,vec_in%real%vz,vec_in%real%pr,vec_in%real%t)
+               call nopcopy(aimag(fRu),aimag(fRv),aimag(fRw),aimag(fRp),aimag(fRt), vec_in%imag%vx,vec_in%imag%vy,vec_in%imag%vz,vec_in%imag%pr,vec_in%imag%t)
 
-            end select
+               !> Compute int_{0}^time exp( (t-s)*A ) * f(s) ds
+               call setupLinearSolver(solver_type, orbit_alocated)
+               call nekstab_solver('RESOLVENT '//solver_type, orbit_alocated, vec_in%real, b)
 
-            !> Compute int_{0}^time exp( (t-s)*A ) * f(s) ds
-            call setupLinearSolver(solver_type, orbit_alocated)
-            ! select type (vec_in_casted => vec_in)
-            !  type is (real_nek_vector)
-            !    call nekstab_solver('RESOLVENT '//solver_type, orbit_alocated, vec_in_casted, b)
-            ! end select
+               !> GMRES solve to compute the post-transient response.
+               opts = gmres_opts(verbose=.true., atol=tol, rtol=tol)
+               if (solver_type == 'DIRECT') then
 
-            !> GMRES solve to compute the post-transient response.
-            opts = gmres_opts(verbose=.true., atol=tol, rtol=tol)
-            if (solver_type == 'DIRECT') then
+                  S = axpby_linop(Id, A, 1.0D0, -1.0D0, .false., .true.)
+                  call gmres(S, b, vec_out%real, info, options=opts, transpose=.true.)
 
-               S = axpby_linop(Id, A, 1.0D0, -1.0D0, .false., .true.)
-               call gmres(S, b, vec_out, info, options=opts, transpose=.true.)
+               else if(solver_type == 'ADJOINT') then
 
-            else if(solver_type == 'ADJOINT') then
+                  S = axpby_linop(Id, A, 1.0D0, -1.0D0, .false., .true.)
+                  call gmres(S, b, vec_out%real, info, options=opts, transpose=.false.)
 
-               S = axpby_linop(Id, A, 1.0D0, -1.0D0, .false., .true.)
-               call gmres(S, b, vec_out, info, options=opts, transpose=.false.)
+               endif
 
-            endif
+               A%t = A%t*0.25D0 ! integrate for 1/4 of the time
+               call direct_solver(A, vec_out%real, vec_out%imag)
 
+         end select
+         end select
+
+         
          end subroutine resolvent_solver
 
       end module LinearOperators
