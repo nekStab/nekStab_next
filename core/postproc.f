@@ -33,6 +33,7 @@ c---------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
 
+      integer, parameter :: n = lx1 * ly1 * lz1 * lelv
       integer, parameter :: nxyz = lx1 * ly1 * lz1
       real, parameter :: eps = 1.0D-5
 
@@ -186,7 +187,7 @@ c
       parameter (lxyz=lx1*ly1*lz1)
       real l2(lx1,ly1,lz1,1)
       real mygi(lxyz,ldim,ldim)
-      real P1,Q1,R1,Q,R
+      real P1,Q1,R1,Q,R,Delta
       common /mygrad/ mygi
 
       nxyz = lx1*ly1*lz1
@@ -244,8 +245,8 @@ c
       include 'TOTAL'
       parameter (lxyz=lx1*ly1*lz1)
       real l2(lx1,ly1,lz1,1)
-      real mygi(lxyz,ldim,ldim)
-      real P1,Q1,R1,R,lambdaCi
+      real gije(lxyz,ldim,ldim),mygi(lxyz,ldim,ldim)
+      real P1,Q1,R1,Q,R,Delta,a1,a2,lambdaCi
       common /mygrad/ mygi
 
       nxyz = lx1*ly1*lz1
@@ -440,6 +441,7 @@ c-------------------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
       parameter (lxyz=lx1*ly1*lz1)
+      real mygi(lxyz,ldim,ldim)
       real b,c,d
       real f,g,h,r,s,t2,u
       real lci
@@ -478,6 +480,7 @@ c-------------------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
       parameter (lxyz=lx1*ly1*lz1)
+      real mygi(lxyz,ldim,ldim)
       real b,c
       real  f
       real lci
@@ -495,6 +498,30 @@ c-------------------------------------------------------------------
          f = sqrt(abs(d))       !sign(abs(d)**(1.0/2.0), d)
          x1 = -b/2./a+f*ci/2./a
          lci = aimag(x1)
+      endif
+
+      end
+c-------------------------------------------------------------------
+      subroutine LambdaCi2D(lci)
+      include 'SIZE'
+      include 'TOTAL'
+      parameter (lxyz=lx1*ly1*lz1)
+      real mygi(lxyz,ldim,ldim)
+      real d
+      real lci
+      complex ci
+      complex x1
+      common /mygrad/ mygi
+      ci =sqrt(cmplx(-1.))
+
+
+
+      d = (mygi(l,1,2)-mygi(l,2,1))**2-4*mygi(l,1,2)*mygi(l,2,1)
+
+      if (d .GE. 0.) then
+         lci = 0.
+      else
+         lci = sqrt(abs(d))/2.
       endif
 
       end
@@ -627,7 +654,7 @@ c-------------------------------------------------------------------
 c----------------------------------------------------------------------
 
 
-      subroutine stability_energy_budget()
+      subroutine stability_energy_budget
       use krylov_subspace
       implicit none
       include 'SIZE'
@@ -644,12 +671,13 @@ c----------------------------------------------------------------------
 
 !     ----- Miscellaneous.
       real :: alpha, beta, glsc2
-      integer :: i, k
+      integer :: i, j, k, mode, n
       character(len=80) :: filename
+      character(len=6) :: mode_str ! Assuming mode will not exceed 6 digits
+      character(len=3) :: mode_str2  ! Length 3 to hold 'K' and two digits
 
-      nv = nx1*ny1*nz1*nelv
-      energy_budget = 0.0D+00
-      integrals = 0.0D+00
+      n = nx1*ny1*nz1*nelv
+
 
 !     #####
 !     #####
@@ -660,22 +688,31 @@ c----------------------------------------------------------------------
 !     --> Load the base flow.
       write(filename, '(a, a, a)') 'BF_', trim(SESSION), '0.f00001'
       call load_fld(filename)
-      call nopcopy(ubase, vbase, wbase, pbase, tbase, vx, vy, vz, pr, t)
+      call nopcopy(ubase, vbase, wbase, pr, tbase, vx, vy, vz, pr, t)
 
-!     --> Load the real part of the mode.
-      write(filename, '(a, a, a)') 'dRe', trim(SESSION), '0.f00001'
+      do mode = 1, maxmodes
+      energy_budget(:,:) = 0.0D0
+      integrals(:) = 0.0D0
+
+      ! Format the mode number with leading zeros
+      write(mode_str, '(i5.5)') mode
+
+!      --> Load the real part of the mode.
+      write(filename, '(a, a, a, a)') 'dRe', trim(SESSION), '0.f', trim(mode_str)
       call load_fld(filename)
       call nopcopy(vx_dRe, vy_dRe, vz_dRe, pr_dRe, t_dRe, vx, vy, vz, pr, t)
 
 !     --> Load the imaginary part of the mode.
-      write(filename, '(a, a, a)') 'dIm', trim(SESSION), '0.f00001'
+      write(filename, '(a, a, a, a)') 'dIm', trim(SESSION), '0.f', trim(mode_str)
       call load_fld(filename)
       call nopcopy(vx_dIm, vy_dIm, vz_dIm, pr_dIm, t_dIm, vx, vy, vz, pr, t)
 
 !     --> Normalize eigenmode to unit-norm (Sanity check).
       call norm(vx_dRe, vy_dRe, vz_dRe, pr_dRe, t_dRe, alpha)
       call norm(vx_dIm, vy_dIm, vz_dIm, pr_dIm, t_dIm, beta)
+
       alpha = sqrt(alpha**2 + beta**2)
+      
       call nopcmult(vx_dRe, vy_dRe, vz_dRe, pr_dRe, t_dRe, alpha)
       call nopcmult(vx_dIm, vy_dIm, vz_dIm, pr_dIm, t_dIm, alpha)
 
@@ -698,7 +735,7 @@ c----------------------------------------------------------------------
 
 !     --> Compute the integrals and the sum.
       do i = 1,10
-         integrals(i) = glsc2(bm1, energy_budget(:, i), nv)
+         integrals(i) = glsc2(bm1, energy_budget(:, i), n)
       enddo
 
       if (if3d) then
@@ -709,17 +746,24 @@ c----------------------------------------------------------------------
 
       do i = 1, k, 3
          call opcopy(vx, vy, vz, energy_budget(:, i), energy_budget(:, i+1), energy_budget(:, i+2))
-         call outpost(vx, vy, vz, pr, t, "KIN")
+         
+         write(mode_str2, "('K',I2.2)") mode
+         call outpost(vx, vy, vz, pr, t, mode_str2)
       enddo
 
       if (nid == 0) then
-         open(101, file='pert_kin_budget.dat', form='formatted')
+         write(filename, '(A,A,A,A)') 'PKE_dRe', trim(SESSION), '0.f', trim(mode_str)
+         open(101, file=filename, form='formatted')
          do i = 1, 10 ! write the energy budget terms
-           write(101, '(I2, " ", 1E15.7)') i, integrals(i)
+           write(101, '(1E15.7)') integrals(i)
+           if(nid.eq.0) write(*,*), 'Integral ', i, ' = ', integrals(i)
          enddo
-         write(101, '("sum", 3x, 1E15.7)') sum(integrals(:))
+         write(101, '(1E15.7)') sum(integrals(1:9))
+         write(101, '(1E15.7)') sum(integrals(1:9)) -  integrals(10)
+         
        endif ! nid == 0
- 
+      enddo
+
       return
       end subroutine stability_energy_budget
 
@@ -781,21 +825,21 @@ c----------------------------------------------------------------------
       integer :: component
 
       if (component .eq. 1) then
-         call gradm1(dcdx, dcdy, dcdz, ubase)
+         call gradm1(dcdx, dcdy, dcdz, ubase, nelv)
 
          prod_x = -0.5 * (vx_dRe**2 + vx_dIm**2) * dcdx
          prod_y = -0.5 * (vx_dRe * vy_dRe + vy_dIm * vx_dIm) * dcdy
          prod_z = -0.5 * (vx_dRe * vz_dRe + vz_dIm * vx_dIm) * dcdz
 
       else if (component .eq. 2) then
-         call gradm1(dcdx, dcdy, dcdz, vbase)
+         call gradm1(dcdx, dcdy, dcdz, vbase, nelv)
 
          prod_x = -0.5 * (vx_dRe * vy_dRe + vy_dIm * vx_dIm) * dcdx
          prod_y = -0.5 * (vy_dRe**2 + vy_dIm**2) * dcdy
          prod_z = -0.5 * (vy_dRe * vz_dRe + vz_dIm * vy_dIm) * dcdz
 
       else if (component .eq. 3) then
-         call gradm1(dcdx, dcdy, dcdz, wbase)
+         call gradm1(dcdx, dcdy, dcdz, wbase, nelv)
 
          prod_x = -0.5 * (vx_dRe * vz_dRe + vz_dIm * vx_dIm) * dcdx
          prod_y = -0.5 * (vy_dRe * vz_dRe + vz_dIm * vy_dIm) * dcdy

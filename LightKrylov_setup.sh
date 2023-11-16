@@ -51,7 +51,7 @@ if [ "$should_clone" == "yes" ]; then
     read -p "Do you want to clone the LightKrylov repository? (y/n): " confirm
     if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
         echo "Cloning LightKrylov repository..."
-        git clone https://github.com/nekStab/LightKrylov.git
+        git clone --depth=1 https://github.com/nekStab/LightKrylov.git
         cd LightKrylov
         git checkout main
     else

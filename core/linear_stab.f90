@@ -73,8 +73,11 @@
             end do
             call prepare_seed(U)
 
+            evop = 'p'
             call svds(A, U, V, uvecs, vvecs, sigma, residuals, info, nev=schur_tgt, tolerance=eigen_tol)
-            call outpost_singvals(sigma(:), residuals(:), 'trans_growth_gain.dat')
+            sigma = sigma ** 2
+            call outpost_singvals(sigma(:), residuals(:), 'Spectre_S'//trim(evop)//'.dat')
+            !call outpost_eigenvectors(X, eigvals, eigvecs, residuals)
 
          end subroutine transient_growth_analysis
 
@@ -100,9 +103,11 @@
             end do
             call prepare_seed(U)
             
+            evop = 'r'
             call svds(R, U, V, uvecs, vvecs, sigma, residuals, info, nev=schur_tgt, tolerance=eigen_tol)
             sigma = sigma ** 2
-            call outpost_singvals(sigma(:), residuals(:), 'sigma_resolvent.dat')
+            call outpost_singvals(sigma(:), residuals(:), 'Spectre_S'//trim(evop)//'.dat')
+            !call outpost_eigenvectors(X, eigvals, eigvecs, residuals)
 
          end subroutine resolvent_analysis
 
@@ -217,11 +222,12 @@
                call load_fld(filename)
                call nopcopy(seed%vx,seed%vy,seed%vz,seed%pr,seed%t, vx,vy,vz,pr,t)
 
-            else ! seed is prescribed in the base flow >????
+            else ! seed is prescribed in the base flow
 
                ! might need to call this first so we can load the BF after and subscribe the seed
                ! not sure if this is needed
-               call nopcopy(seed%vx,seed%vy,seed%vz,seed%pr,seed%t, ubase,vbase,wbase,pbase,tbase)
+               !call nopcopy(seed%vx,seed%vy,seed%vz,seed%pr,seed%t, ubase,vbase,wbase,pbase,tbase)
+               call nopcopy(seed%vx,seed%vy,seed%vz,seed%pr,seed%t, vx,vy,vz,pr,t) ! seed comes from useric 
 
             end if
 
@@ -281,11 +287,12 @@
             class(abstract_vector), allocatable :: nek_vector
 
             integer :: i
-            character(len=3)  :: nRe,nIm,nRv
+            character(len=3)  :: nRe,nIm,nRv,nIv
 
             nRe = trim(evop) // 'Re' ! real part
             nIm = trim(evop) // 'Im' ! imaginary part
             nRv = trim(evop) // 'Rv' ! real part of vorticity
+            nIv = trim(evop) // 'Iv' ! imaginary part of vorticity
 
             do i = 1, maxmodes
 
@@ -299,7 +306,8 @@
                select type(nek_vector)
                 type is(real_nek_vector)
                   call nopcopy(vx,vy,vz,pr,t, nek_vector%vx,nek_vector%vy,nek_vector%vz,nek_vector%pr,nek_vector%t)
-                  call outpost2(vx,vy,vz,pr,t, nof, nRe)
+                  ! need to normalize to unit norm?
+                  call outpost2(vx,vy,vz,pr,t, nof, nRe) 
                   call outpost_vort(vx,vy,vz,nRv)
                end select
 
@@ -308,7 +316,9 @@
                select type(nek_vector)
                 type is(real_nek_vector)
                   call nopcopy(vx,vy,vz,pr,t, nek_vector%vx,nek_vector%vy,nek_vector%vz,nek_vector%pr,nek_vector%t)
+                  ! need to normalize to unit norm?
                   call outpost2(vx,vy,vz,pr,t, nof, nIm)
+                  !call outpost_vort(vx,vy,vz,nIv)
                end select
 
             end do ! i = 1, maxmodes

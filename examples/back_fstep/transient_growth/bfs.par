@@ -1,0 +1,30 @@
+[GENERAL]
+startfrom = BF_bfs0.f00001
+stopat = endTime
+endtime = 1.0
+userparam01 = 3.3 #
+userparam07 = 64  #
+userparam08 = 5   # sponge lenght left
+userparam09 = 10  # sponge lenght right
+userparam10 = 2   # sponge strenght
+dt = 0
+variabledt = no
+timestepper = bdf3
+targetcfl = 0.5
+writecontrol = runTime
+writeinterval = 100.
+writedoubleprecision = no
+dealiasing = yes
+
+[PRESSURE]
+preconditioner = semg_xxt
+residualtol = 1.0E-08
+residualproj = yes
+writetofieldfile = yes
+
+[VELOCITY]
+residualtol = 1.0E-08
+residualproj = no
+density = 1.0
+viscosity = -500.0
+

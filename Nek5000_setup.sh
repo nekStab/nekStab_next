@@ -68,7 +68,7 @@ if [ "$should_clone" == "yes" ]; then
     read -p "Do you want to clone the Nek5000 repository? (y/n): " confirm
     if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
         echo "Cloning Nek5000 repository..."
-        git clone https://github.com/Nek5000/Nek5000.git
+        git clone --depth=1 https://github.com/Nek5000/Nek5000.git
         cd Nek5000
         git checkout master
     else
