@@ -54,15 +54,14 @@
      $    ,fct(lx1,ly1,lz1,lelt,ldimt)
       common /nStab_forces/ fcx, fcy, fcz, fcp, fct !general forcing array
 
-      complex fRu(lx1,ly1,lz1,lelv)!, fImu(lx1,ly1,lz1,lelv) 
-     $    ,fRv(lx1,ly1,lz1,lelv)!, fImv(lx1,ly1,lz1,lelv) 
-     $    ,fRw(lx1,ly1,lz1,lelv)!, fImw(lx1,ly1,lz1,lelv) 
-     $    ,fRp(lx2,ly2,lz2,lelv)!, fImp(lx2,ly2,lz2,lelv) 
-     $    ,fRt(lx1,ly1,lz1,lelt,ldimt)!, fImt(lx1,ly1,lz1,lelt,ldimt)
+      complex fRu(lx1,ly1,lz1,lelv)
+     $    ,fRv(lx1,ly1,lz1,lelv)
+     $    ,fRw(lx1,ly1,lz1,lelv)
+     $    ,fRp(lx2,ly2,lz2,lelv)
+     $    ,fRt(lx1,ly1,lz1,lelt,ldimt)
       common /nStab_forces/ fRu, fRv, fRw, fRp, fRt
       real omega_t
       common /nStab_forces/ omega_t
-
 
       real spng_fn(lx1*ly1*lz1*lelv)       ! sponge function
      $    ,spng_vr(lx1*ly1*lz1*lelv,ldim)  ! reference velocity field

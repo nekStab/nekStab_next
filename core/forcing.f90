@@ -10,14 +10,16 @@ c-----------------------------------------------------------------------
       ! local element number
       iel = gllel(ieg)
 
+      ! here we add sponge and other forcings (if any)
+      ffx = ffx + fcx(ix,iy,iz,iel)
+      ffy = ffy + fcy(ix,iy,iz,iel)
+      if (if3D) ffz = ffz + fcz(ix,iy,iz,iel)
+
+      ! here we add harmonic forcing for Resolvent case
       if (omega_t > 0) then
          ffx = ffx + real(fRu(ix,iy,iz,iel))*cos(omega_t) + aimag(fRu(ix,iy,iz,iel))*sin(omega_t)
          ffy = ffy + real(fRv(ix,iy,iz,iel))*cos(omega_t) + aimag(fRv(ix,iy,iz,iel))*sin(omega_t)
          if (if3D) ffz = ffz + real(fRw(ix,iy,iz,iel))*cos(omega_t) + aimag(fRw(ix,iy,iz,iel))*sin(omega_t)
-      else
-         ffx = ffx + fcx(ix,iy,iz,iel)
-         ffy = ffy + fcy(ix,iy,iz,iel)
-         if (if3D) ffz = ffz + fcz(ix,iy,iz,iel)
       endif 
 
       if (spng_st.ne.0) then
