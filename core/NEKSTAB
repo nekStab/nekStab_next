@@ -54,13 +54,12 @@
      $    ,fct(lx1,ly1,lz1,lelt,ldimt)
       common /nStab_forces/ fcx, fcy, fcz, fcp, fct !general forcing array
 
-      complex fReu(lx1,ly1,lz1,lelv)!, fImu(lx1,ly1,lz1,lelv) 
-     $    ,fRev(lx1,ly1,lz1,lelv)!, fImv(lx1,ly1,lz1,lelv) 
-     $    ,fRew(lx1,ly1,lz1,lelv)!, fImw(lx1,ly1,lz1,lelv) 
-     $    ,fRep(lx2,ly2,lz2,lelv)!, fImp(lx2,ly2,lz2,lelv) 
-     $    ,fRet(lx1,ly1,lz1,lelt,ldimt)!, fImt(lx1,ly1,lz1,lelt,ldimt)
-      common /nStab_forces/ fReu, fRev, fRew, fRep, fRet
-      !$                      fImu, fImv, fImw, fImp, fImt, omega_t !resolvent basis forcing array
+      complex fRu(lx1,ly1,lz1,lelv)!, fImu(lx1,ly1,lz1,lelv) 
+     $    ,fRv(lx1,ly1,lz1,lelv)!, fImv(lx1,ly1,lz1,lelv) 
+     $    ,fRw(lx1,ly1,lz1,lelv)!, fImw(lx1,ly1,lz1,lelv) 
+     $    ,fRp(lx2,ly2,lz2,lelv)!, fImp(lx2,ly2,lz2,lelv) 
+     $    ,fRt(lx1,ly1,lz1,lelt,ldimt)!, fImt(lx1,ly1,lz1,lelt,ldimt)
+      common /nStab_forces/ fRu, fRv, fRw, fRp, fRt
       real omega_t
       common /nStab_forces/ omega_t
 
