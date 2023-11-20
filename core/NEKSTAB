@@ -8,13 +8,14 @@
       ! Logical variables for various stability flags
       logical :: ifbfcv, ifres, ifldbf, ifbf2D, ifseed_nois, ifseed_symm, ifseed_load
       logical :: ifvor, ifvox, ifstorebase, ifdyntol, iffindiff
+      logical :: isNekStabinit
       logical :: isDirect, isAdjoint, isTransientGrowth, isResolvent
       logical :: isFloquetDirect, isFloquetAdjoint, isFloquetTransientGrowth, isFloquetResolvent
       logical :: isNewtonFP, isNewtonPO, isNewtonPO_T
       
       common /nStab_logical/ ifbfcv, ifres, ifldbf, ifbf2D, ifseed_nois, ifseed_symm, ifseed_load
       common /nStab_logical/ ifvor, ifvox, ifstorebase, ifdyntol, iffindiff
-      common /nStab_logical/ isDirect, isAdjoint, isTransientGrowth
+      common /nStab_logical/ isNekStabinit, isDirect, isAdjoint, isTransientGrowth
       common /nStab_logical/ isFloquetDirect, isFloquetAdjoint, isFloquetTransientGrowth
       common /nStab_logical/ isNewtonFP, isNewtonPO, isNewtonPO_T
       common /nStab_logical/ isResolvent, isFloquetResolvent

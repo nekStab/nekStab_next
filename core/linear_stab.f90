@@ -21,6 +21,7 @@
             integer :: info, i
             logical :: transpose
 
+            if(.not.isNekStabinit) call nekStab_init
             call prepare_base_flow
 
             call set_linear_solver
@@ -42,12 +43,13 @@
 
             call eigs(A, X, eigvecs, eigvals, residuals, info, verbosity=.false., nev=schur_tgt, tolerance=eigen_tol, transpose=transpose)
 
-            call outpost_eigenspectrum(eigvals, residuals, 'Spectre_H'//trim(evop)//'.dat')
+            call outpost_eigenspectrum(eigvals, residuals, 'Spectrum_H'//trim(evop)//'.dat')
 
             eigvals = log(eigvals)/A%t
 
-            call outpost_eigenspectrum(eigvals, residuals, 'Spectre_NS'//trim(evop)//'.dat')
+            call outpost_eigenspectrum(eigvals, residuals, 'Spectrum_NS'//trim(evop)//'.dat')
             call outpost_eigenvectors(X, eigvals, eigvecs, residuals)
+            call nek_end
 
          end subroutine linear_stability_analysis
 
@@ -62,6 +64,7 @@
             real :: residuals(k_dim), alpha
             integer :: info, i
 
+            if(.not.isNekStabinit) call nekStab_init
             call prepare_base_flow
             call set_linear_solver
             A = exponential_prop(fintim)
@@ -76,8 +79,9 @@
             evop = 'p'
             call svds(A, U, V, uvecs, vvecs, sigma, residuals, info, nev=schur_tgt, tolerance=eigen_tol)
             sigma = sigma ** 2
-            call outpost_singvals(sigma(:), residuals(:), 'Spectre_S'//trim(evop)//'.dat')
-            !call outpost_eigenvectors(X, eigvals, eigvecs, residuals)
+            call outpost_singvals(sigma(:), residuals(:), 'Spectrum_Sigma_'//trim(evop)//'.dat')
+            ! call outpost_singvectors(U, V, uvecs, vvecs, residuals)
+            call nek_end
 
          end subroutine transient_growth_analysis
 
@@ -92,6 +96,7 @@
             real :: residuals(k_dim), alpha
             integer :: info, i
 
+            if(.not.isNekStabinit) call nekStab_init
             call prepare_base_flow
             call set_linear_solver
             R = resolvent_op(fintim)
@@ -106,9 +111,9 @@
             evop = 'r'
             call svds(R, U, V, uvecs, vvecs, sigma, residuals, info, nev=schur_tgt, tolerance=eigen_tol)
             sigma = sigma ** 2
-            call outpost_singvals(sigma(:), residuals(:), 'Spectre_S'//trim(evop)//'.dat')
-            !call outpost_eigenvectors(X, eigvals, eigvecs, residuals)
-
+            call outpost_singvals(sigma(:), residuals(:), 'Spectrum_Sigma_'//trim(evop)//'.dat')
+            ! call outpost_singvectors(U, V, uvecs, vvecs, residuals)
+            call nek_end
          end subroutine resolvent_analysis
 
          subroutine prepare_base_flow
@@ -324,5 +329,50 @@
             end do ! i = 1, maxmodes
 
          end subroutine outpost_eigenvectors
+
+         subroutine outpost_singvectors(U, V, uvec, vvec, sigma, residuals)
+             implicit none
+             include 'SIZE'
+             include 'TOTAL'
+
+             class(real_nek_vector), intent(in) :: U(k_dim + 1)
+             class(real_nek_vector), intent(in) :: V(k_dim + 1)
+             real, intent(in) :: uvec(k_dim, k_dim), vvec(k_dim, k_dim), sigma(k_dim)
+             real, intent(in) :: residuals(k_dim)
+             class(abstract_vector), allocatable :: nek_vector
+
+             integer :: i
+             character(len=3)  :: nU,nV
+
+             nU = trim(evop) // 'U' ! U matrix
+             nV = trim(evop) // 'V' ! V matrix
+
+             do i = 1, maxmodes
+
+                if (nid == 0) then
+                   write(*,*) "Outposting singular vector: ", i, "/", maxmodes
+                   write(*,*) "  Sigma: ", sigma(i)
+               endif
+                !     ----- Output the U matrix -----
+                call get_vec(nek_vector, U(1:k_dim), uvec(:, i))
+                select type(nek_vector)
+                 type is(real_nek_vector)
+                   call nopcopy(vx,vy,vz,pr,t, nek_vector%vx,nek_vector%vy,nek_vector%vz,nek_vector%pr,nek_vector%t)
+                   ! need to normalize to unit norm?
+                   call outpost2(vx,vy,vz,pr,t, nof, nU) 
+                end select
+
+                !     ----- Output the V matrix -----
+                call get_vec(nek_vector, V(1:k_dim), vvec(:, i))
+                select type(nek_vector)
+                 type is(real_nek_vector)
+                   call nopcopy(vx,vy,vz,pr,t, nek_vector%vx,nek_vector%vy,nek_vector%vz,nek_vector%pr,nek_vector%t)
+                   ! need to normalize to unit norm?
+                   call outpost2(vx,vy,vz,pr,t, nof, nV)
+                end select
+
+             end do ! i = 1, maxmodes
+
+         end subroutine outpost_singvectors
 
       end module LinearStab

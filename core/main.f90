@@ -7,7 +7,7 @@ c---------------------------------------------------------------------
          include 'TOTAL'
       
          k_dim = 100               ! standard value, increas  in .usr
-         schur_tgt = int(2)        ! schur target for schur step factorizaiton
+         schur_tgt = 2             ! schur target for schur step factorizaiton
          eigen_tol = 1.0e-6        ! tolerance for eigenmodes convergence
          schur_del = 0.10d0        !
          maxmodes = 20             ! max number of converged modes to disk
@@ -76,7 +76,7 @@ c---------------------------------------------------------------------
 c---------------------------------------------------------------------
       subroutine nekStab_init
          use krylov_subspace
-      !     initialize arrays and variables defaults
+         use LinearStab
          implicit none
          include 'SIZE'
          include 'TOTAL'
@@ -85,6 +85,7 @@ c---------------------------------------------------------------------
          integer i
          nv = nx1*ny1*nz1*nelv
       
+         if (.not.isNekStabinit)then
          call nekStab_setDefault
          call nekStab_usrchk ! where user change defaults
          call nekStab_printNEKParams
@@ -149,21 +150,25 @@ c---------------------------------------------------------------------
             if(nid.eq.0)write(6,*)'number of possible scalars (ldimt)=',ldimt
             if(nid.eq.0)write(6,*)'number of scalars (nof)=',nof, npscal
          endif
+
+         call oprzero(fcx,fcy,fcz) ! never comment this!
+         call rzero(fct,nx1*ny1*nz1*nelv)
+
+         isNekStabinit = .true.
+      elseif (nid==0) then
+         print *,'NekStab already initialized'
+      endif
          
       end subroutine nekStab_init
 c---------------------------------------------------------------------
-      subroutine nekStab
-      !     nekStab main driver
+      subroutine nekStab_set_uparam
          use LinearStab
          implicit none
          include 'SIZE'
          include 'TOTAL'
       
          if(istep.eq.0) call nekStab_init
-      
-         call oprzero(fcx,fcy,fcz) ! never comment this!
-         call rzero(fct,nx1*ny1*nz1*nelv)
-      
+            
          select case (floor(uparam(1)))
       
           case(0)                   ! DNS
@@ -234,34 +239,15 @@ c---------------------------------------------------------------------
 
             isResolvent = (uparam(1) .eq. 3.4)
             isFloquetResolvent = (uparam(1) .eq. 3.41)
-                  
-            ! if (nid .eq. 0) then
-            !    if (isDirect) then
-            !       write(6,*) 'Krylov-Schur for Direct LNSE...'
-            !    elseif (isAdjoint) then
-            !       write(6,*) 'Krylov-Schur for Adjoint LNSE...'
-            !    elseif (isTransientGrowth) then
-            !       write(6,*) 'Krylov-Schur for Direct-Adjoint LNSE...'
-            !    elseif (isFloquetDirect) then
-            !       write(6,*) 'Krylov-Schur for Direct LNSE in Floquet...'
-            !    elseif (isFloquetAdjoint) then
-            !       write(6,*) 'Krylov-Schur for Adjoint LNSE in Floquet...'
-            !    elseif (isFloquetTransientGrowth) then
-            !       write(6,*) 'Krylov-Schur for Direct-Adjoint LNSE in Floquet...'
-            !    else
-            !       write(6,*) 'Unrecognized option...'
-            !       call nek_end
-            !    endif ! isDirect
-            ! endif ! nid == 0
 
-            if(isDirect.or.isFloquetDirect.or.isAdjoint.or.isFloquetAdjoint)then
-               call linear_stability_analysis
-            elseif(isTransientGrowth.or.isFloquetTransientGrowth)then
-               call transient_growth_analysis
-            elseif(isResolvent.or.isFloquetResolvent)then
-               call resolvent_analysis
-            endif 
-            call nek_end
+            ! if(isDirect.or.isFloquetDirect.or.isAdjoint.or.isFloquetAdjoint)then
+            !    call linear_stability_analysis
+            ! elseif(isTransientGrowth.or.isFloquetTransientGrowth)then
+            !    call transient_growth_analysis
+            ! elseif(isResolvent.or.isFloquetResolvent)then
+            !    call resolvent_analysis
+            ! endif 
+            ! call nek_end
       
           case(4)                   ! in postprocessing.f
       
@@ -288,5 +274,5 @@ c---------------------------------------------------------------------
       
          end select
       
-      end subroutine nekStab
+      end subroutine nekStab_set_uparam
 c---------------------------------------------------------------------

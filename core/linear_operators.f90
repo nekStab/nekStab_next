@@ -167,6 +167,8 @@
 
             nt = nx1*ny1*nz1*nelt
 
+            if (nid.eq.0) write(*,*) 'nekstab_solver with :',solver_type
+
             ! --> Setup the Nek parameters for the finite-differences approximation.
             if (solver_type == 'DIRECT FD') then
 
@@ -299,7 +301,7 @@
             class(abstract_vector), intent(out) :: vec_out
             logical, save :: orbit_alocated = .false.
 
-            write(*,*) 'direct_map, orbit_alocated=',orbit_alocated
+            if(nid.eq.0) write(*,*) 'direct_map, orbit_alocated=',orbit_alocated
             call resolvent_solver('DIRECT', orbit_alocated, vec_in, vec_out)
 
          end subroutine direct_map
@@ -312,7 +314,7 @@
             class(abstract_vector), intent(out) :: vec_out
             logical, save :: orbit_alocated = .false.
 
-            write(*,*) 'adjoint_map, orbit_alocated=',orbit_alocated
+            if(nid.eq.0) write(*,*) 'adjoint_map, orbit_alocated=',orbit_alocated
             call resolvent_solver('ADJOINT', orbit_alocated, vec_in, vec_out)
 
          end subroutine adjoint_map
@@ -342,11 +344,10 @@
             Id = identity_linop()
             A = exponential_prop(fintim)
 
+            if(nid.eq.0)write(*,*)' A%t=',A%t
+
             select type (vec_in)
              type is (cmplx_nek_vector)
-             select type (vec_out)
-             type is (cmplx_nek_vector)
-
                !> Compute the right-hand side vector for gmres.
                allocate(b, source=vec_in%real) ; call b%zero()
 
@@ -354,30 +355,37 @@
                call nopcopy(real(fRu),real(fRv),real(fRw),real(fRp),real(fRt), vec_in%real%vx,vec_in%real%vy,vec_in%real%vz,vec_in%real%pr,vec_in%real%t)
                call nopcopy(aimag(fRu),aimag(fRv),aimag(fRw),aimag(fRp),aimag(fRt), vec_in%imag%vx,vec_in%imag%vy,vec_in%imag%vz,vec_in%imag%pr,vec_in%imag%t)
 
+            end select
+
                !> Compute int_{0}^time exp( (t-s)*A ) * f(s) ds
                call setupLinearSolver(solver_type, orbit_alocated)
-               call nekstab_solver('RESOLVENT '//solver_type, orbit_alocated, vec_in%real, b)
+
+               select type (vec_in)
+               type is (cmplx_nek_vector)
+                  call nekstab_solver('RESOLVENT '//solver_type, orbit_alocated, vec_in%real, b)
+               end select
+
+               select type (vec_out)
+               type is (cmplx_nek_vector)
 
                !> GMRES solve to compute the post-transient response.
                opts = gmres_opts(verbose=.true., atol=tol, rtol=tol)
                if (solver_type == 'DIRECT') then
-
                   S = axpby_linop(Id, A, 1.0D0, -1.0D0, .false., .true.)
                   call gmres(S, b, vec_out%real, info, options=opts, transpose=.true.)
-
                else if(solver_type == 'ADJOINT') then
-
                   S = axpby_linop(Id, A, 1.0D0, -1.0D0, .false., .true.)
                   call gmres(S, b, vec_out%real, info, options=opts, transpose=.false.)
-
                endif
+            end select
 
-               A%t = A%t*0.25D0 ! integrate for 1/4 of the time
+
+            A%t = A%t*0.25D0 ! integrate for 1/4 of the time
+            if (nid.eq.0)write(*,*)'integrating for 1/4 of the time:',A%t
+            select type (vec_out)
+            type is (cmplx_nek_vector)
                call direct_solver(A, vec_out%real, vec_out%imag)
-
-         end select
-         end select
-
+            end select
          
          end subroutine resolvent_solver
 
