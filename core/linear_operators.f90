@@ -146,7 +146,7 @@
 
             end if
 
-         end subroutine
+         end subroutine setupLinearSolver
 
          subroutine nekstab_solver(solver_type, orbit_stored, in, out)
             use NekVectors
@@ -338,7 +338,7 @@
             include 'TOTAL'
             include 'ADJOINT'
 
-            character(len=7), intent(in) :: solver_type
+            character(len=9), intent(in) :: solver_type
             logical, intent(inout) :: orbit_alocated
             type(cmplx_nek_vector), intent(in) :: in
             type(cmplx_nek_vector), intent(out) :: out
@@ -356,6 +356,7 @@
             Id = identity_linop()
             A = exponential_prop(fintim)
 
+            write(*,*)'CODE NOT ENTERING HERE! WHY?'
             write(*,*)'solver_type in resolvent_solver=',solver_type
             if(nid.eq.0)write(*,*)' A%t=',A%t
 
