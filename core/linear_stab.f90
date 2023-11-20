@@ -79,9 +79,9 @@
             evop = 'p'
             call svds(A, U, V, uvecs, vvecs, sigma, residuals, info, nev=schur_tgt, tolerance=eigen_tol)
             sigma = sigma ** 2
-            call outpost_singvals(sigma(:), residuals(:), 'Spectrum_Sigma_'//trim(evop)//'.dat')
+            call outpost_singvals(sigma(:), residuals(:), 'Spectrum_S'//trim(evop)//'.dat')
             ! call outpost_singvectors(U, V, uvecs, vvecs, residuals)
-            call nek_end
+            !call nek_end
 
          end subroutine transient_growth_analysis
 
@@ -109,10 +109,13 @@
             call prepare_seed(U)
             
             evop = 'r'
+            if(nid.eq.0)write(*,*)'Resolvent started: k_dim, schur_target, eigen_tol = ', k_dim, schur_tgt, eigen_tol
             call svds(R, U, V, uvecs, vvecs, sigma, residuals, info, nev=schur_tgt, tolerance=eigen_tol)
             sigma = sigma ** 2
-            call outpost_singvals(sigma(:), residuals(:), 'Spectrum_Sigma_'//trim(evop)//'.dat')
+            call outpost_singvals(sigma(:), residuals(:), 'Spectrum_S'//trim(evop)//'.dat')
             ! call outpost_singvectors(U, V, uvecs, vvecs, residuals)
+            
+            if(nid.eq.0)write(*,*)'Resolvent finished.'
             call nek_end
          end subroutine resolvent_analysis
 

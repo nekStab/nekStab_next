@@ -223,9 +223,9 @@
 
                   ! --> Integrate in time.
                   omega_t = 0.0D0
-                  if (INDEX(solver_type, 'RESOLVENT') > 0) then
+                  if (INDEX(solver_type, 'RESOLVENT') .ne. 0.0D0) then
                      omega_t = (2.0D0 * pi / fintim) * time
-                     ! if omega_t > 0 then forcing is applied in nekStab_forcing
+                     ! if omega_t NOT 0 then forcing is applied in nekStab_forcing
                   endif
                   call nekstab_usrchk()
                   call nek_advance()
@@ -302,8 +302,14 @@
             logical, save :: orbit_alocated = .false.
 
             if(nid.eq.0) write(*,*) 'direct_map, orbit_alocated=',orbit_alocated
-            call resolvent_solver('DIRECT', orbit_alocated, vec_in, vec_out)
-
+            select type (vec_in)
+             type is (cmplx_nek_vector)
+               select type (vec_out)
+                type is (cmplx_nek_vector)
+                  call setupLinearSolver('DIRECT ', orbit_alocated)
+                  call resolvent_solver('DIRECT ', orbit_alocated, vec_in, vec_out)
+               end select
+            end select
          end subroutine direct_map
 
          subroutine adjoint_map(self, vec_in, vec_out)
@@ -315,21 +321,27 @@
             logical, save :: orbit_alocated = .false.
 
             if(nid.eq.0) write(*,*) 'adjoint_map, orbit_alocated=',orbit_alocated
-            call resolvent_solver('ADJOINT', orbit_alocated, vec_in, vec_out)
-
+            select type (vec_in)
+             type is (cmplx_nek_vector)
+               select type (vec_out)
+                type is (cmplx_nek_vector)
+                  call setupLinearSolver('ADJOINT', orbit_alocated)
+                  call resolvent_solver('ADJOINT', orbit_alocated, vec_in, vec_out)
+               end select
+            end select
          end subroutine adjoint_map
 
-         subroutine resolvent_solver(solver_type, orbit_alocated, vec_in, vec_out)
+         subroutine resolvent_solver(solver_type, orbit_alocated, in, out)
             use NekVectors
             implicit none
             include 'SIZE'
             include 'TOTAL'
             include 'ADJOINT'
 
-            character(len=*), intent(in) :: solver_type
+            character(len=7), intent(in) :: solver_type
             logical, intent(inout) :: orbit_alocated
-            class(abstract_vector), intent(in) :: vec_in
-            class(abstract_vector), intent(out) :: vec_out
+            type(cmplx_nek_vector), intent(in) :: in
+            type(cmplx_nek_vector), intent(out) :: out
 
             !> Exponential propagator.
             class(exponential_prop), allocatable :: A
@@ -344,49 +356,33 @@
             Id = identity_linop()
             A = exponential_prop(fintim)
 
+            write(*,*)'solver_type in resolvent_solver=',solver_type
             if(nid.eq.0)write(*,*)' A%t=',A%t
 
-            select type (vec_in)
-             type is (cmplx_nek_vector)
-               !> Compute the right-hand side vector for gmres.
-               allocate(b, source=vec_in%real) ; call b%zero()
+            !> Compute the right-hand side vector for gmres.
+            allocate(b, source=in%real) ; call b%zero()
 
-               !> Sets the forcing spacial support.
-               call nopcopy(real(fRu),real(fRv),real(fRw),real(fRp),real(fRt), vec_in%real%vx,vec_in%real%vy,vec_in%real%vz,vec_in%real%pr,vec_in%real%t)
-               call nopcopy(aimag(fRu),aimag(fRv),aimag(fRw),aimag(fRp),aimag(fRt), vec_in%imag%vx,vec_in%imag%vy,vec_in%imag%vz,vec_in%imag%pr,vec_in%imag%t)
+            !> Sets the forcing spacial support.
+            call nopcopy(real(fRu),real(fRv),real(fRw),real(fRp),real(fRt), in%real%vx,in%real%vy,in%real%vz,in%real%pr,in%real%t)
+            call nopcopy(aimag(fRu),aimag(fRv),aimag(fRw),aimag(fRp),aimag(fRt), in%imag%vx,in%imag%vy,in%imag%vz,in%imag%pr,in%imag%t)
 
-            end select
+            !> Compute int_{0}^time exp( (t-s)*A ) * f(s) ds
+            call nekstab_solver('RESOLVENT '//solver_type, orbit_alocated, in%real, b)
 
-               !> Compute int_{0}^time exp( (t-s)*A ) * f(s) ds
-               call setupLinearSolver(solver_type, orbit_alocated)
-
-               select type (vec_in)
-               type is (cmplx_nek_vector)
-                  call nekstab_solver('RESOLVENT '//solver_type, orbit_alocated, vec_in%real, b)
-               end select
-
-               select type (vec_out)
-               type is (cmplx_nek_vector)
-
-               !> GMRES solve to compute the post-transient response.
-               opts = gmres_opts(verbose=.true., atol=tol, rtol=tol)
-               if (solver_type == 'DIRECT') then
-                  S = axpby_linop(Id, A, 1.0D0, -1.0D0, .false., .true.)
-                  call gmres(S, b, vec_out%real, info, options=opts, transpose=.true.)
-               else if(solver_type == 'ADJOINT') then
-                  S = axpby_linop(Id, A, 1.0D0, -1.0D0, .false., .true.)
-                  call gmres(S, b, vec_out%real, info, options=opts, transpose=.false.)
-               endif
-            end select
-
+            !> GMRES solve to compute the post-transient response.
+            opts = gmres_opts(verbose=.true., atol=tol, rtol=tol)
+            if (solver_type == 'DIRECT') then
+               S = axpby_linop(Id, A, 1.0D0, -1.0D0, .false., .true.)
+               call gmres(S, b, out%real, info, options=opts, transpose=.true.)
+            else if(solver_type == 'ADJOINT') then
+               S = axpby_linop(Id, A, 1.0D0, -1.0D0, .false., .true.)
+               call gmres(S, b, out%real, info, options=opts, transpose=.false.)
+            endif
 
             A%t = A%t*0.25D0 ! integrate for 1/4 of the time
             if (nid.eq.0)write(*,*)'integrating for 1/4 of the time:',A%t
-            select type (vec_out)
-            type is (cmplx_nek_vector)
-               call direct_solver(A, vec_out%real, vec_out%imag)
-            end select
-         
+            call direct_solver(A, out%real, out%imag)
+
          end subroutine resolvent_solver
 
       end module LinearOperators

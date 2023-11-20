@@ -9,7 +9,7 @@ c-----------------------------------------------------------------------
       ! isDirect= .true.
       uparam(1)=3.40
       isResolvent= .true.
-      call nekStab_set_uparam
+      !call nekStab_set_uparam
       !call linear_stability_analysis
       !call transient_growth_analysis
       call resolvent_analysis
