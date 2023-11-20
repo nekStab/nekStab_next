@@ -175,11 +175,11 @@
                call nopcopy(work%vx, work%vy, work%vz, work%pr, work%t, ubase, vbase, wbase, pbase, tbase)
 
                work_norm = work%norm()
-               epsilon0 = epsilon * work_norm
+               epsilon0 = epsilon_base * work_norm
                ampls = ampls * epsilon0
 
                if(nid.eq.0) then
-                  write(*,*) 'epsilon, work_norm=',epsilon,work_norm
+                  write(*,*) 'epsilon_base, work_norm=',epsilon_base,work_norm
                   write(*,*) 'epsilon0=',epsilon0
                   write(*,*) 'ampls(:)=',ampls(:)
                   write(*,*) 'coefs(:)=',coefs(:)
@@ -321,13 +321,34 @@
             logical, save :: orbit_alocated = .false.
 
             if(nid.eq.0) write(*,*) 'adjoint_map, orbit_alocated=',orbit_alocated
+            if(nid.eq.0) write(*,*) 'Checking types of vec_in and vec_out...'
+            select type (vec_in)
+               type is (cmplx_nek_vector)
+               if(nid.eq.0) write(*,*) 'vec_in is of type cmplx_nek_vector'
+               type is (real_nek_vector)
+               if(nid.eq.0) write(*,*) 'vec_in is of type real_nek_vector'
+               class default
+               if(nid.eq.0) write(*,*) 'vec_in is of an unknown type'
+            end select
+
+            select type (vec_out)
+               type is (cmplx_nek_vector)
+               if(nid.eq.0) write(*,*) 'vec_out is of type cmplx_nek_vector'
+               type is (real_nek_vector)
+               if(nid.eq.0) write(*,*) 'vec_out is of type real_nek_vector'
+               class default
+               if(nid.eq.0) write(*,*) 'vec_out is of an unknown type'
+            end select
+
+            if(nid.eq.0) write(*,*) 'setupLinearSolver ADJOINT'
+            call setupLinearSolver('ADJOINT', orbit_alocated)
+
             select type (vec_in)
              type is (cmplx_nek_vector)
-               select type (vec_out)
-                type is (cmplx_nek_vector)
-                  call setupLinearSolver('ADJOINT', orbit_alocated)
-                  call resolvent_solver('ADJOINT', orbit_alocated, vec_in, vec_out)
-               end select
+                select type (vec_out)
+                  type is (cmplx_nek_vector)
+                     call resolvent_solver('ADJOINT', orbit_alocated, vec_in, vec_out)
+                end select
             end select
          end subroutine adjoint_map
 
@@ -356,7 +377,6 @@
             Id = identity_linop()
             A = exponential_prop(fintim)
 
-            write(*,*)'CODE NOT ENTERING HERE! WHY?'
             write(*,*)'solver_type in resolvent_solver=',solver_type
             if(nid.eq.0)write(*,*)' A%t=',A%t
 

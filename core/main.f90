@@ -13,7 +13,7 @@ c---------------------------------------------------------------------
          maxmodes = 20             ! max number of converged modes to disk
          glob_skip = 10            ! global energy computation skip frequency
          findiff_order = 1         ! finite difference order for the Frechet derivative
-         epsilon = 1.0e-6          ! finite difference perturbation scale parameter
+         epsilon_base = 1.0e-6          ! finite difference perturbation scale parameter
 
          bst_skp = 10              ! boostconv skip iterations
          bst_snp = 10              ! bootsconv residual subspace matrix size
@@ -51,7 +51,7 @@ c---------------------------------------------------------------------
       !     !Broadcast all defaults !
          call bcast(eigen_tol, wdsize) ! wdsize for real
          call bcast(schur_del, wdsize)
-         call bcast(epsilon, wdsize)
+         call bcast(epsilon_base, wdsize)
       
          call bcast(schur_tgt, isize) ! isize for integer
          call bcast(maxmodes, isize)

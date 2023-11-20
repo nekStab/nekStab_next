@@ -22,8 +22,8 @@
       
       ! Real variables for numerical tolerances and domain dimensions
       real :: eigen_tol, schur_del, glmax_qc, dtmaxx
-      real :: xmn, xmx, ymn, ymx, zmn, zmx
-      common /nStab_real/ eigen_tol, schur_del, glmax_qc, dtmaxx, xmn, xmx, ymn, ymx, zmn, zmx
+      real :: xmn, xmx, ymn, ymx, zmn, zmx, epsilon_base
+      common /nStab_real/ eigen_tol, schur_del, glmax_qc, dtmaxx, xmn, xmx, ymn, ymx, zmn, zmx, epsilon_base
       
       ! Integer variables for boost convergence and spatial dimensions
       integer :: bst_skp, bst_snp, k_dim
@@ -35,8 +35,8 @@
       ! Real variables for finite difference method
       real :: xck, yck, zck
       integer :: findiff_order
-      real :: coefs(4), ampls(4), epsilon
-      common /nStab_fd/ coefs, ampls, findiff_order, epsilon
+      real :: coefs(4), ampls(4)
+      common /nStab_fd/ coefs, ampls, findiff_order
       
       ! Arrays for base flow variables
       real :: ubase(lx1,ly1,lz1,lelv), vbase(lx1,ly1,lz1,lelv)

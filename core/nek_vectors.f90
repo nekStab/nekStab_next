@@ -144,8 +144,10 @@
             subroutine cmplx_copy(out, from)
             class(cmplx_nek_vector), intent(in) :: from
             class(cmplx_nek_vector), intent(out) :: out
-            call nopcopy(out%real%vx,out%real%vy,out%real%vz,out%real%pr,out%real%t, from%real%vx,from%real%vy,from%real%vz,from%real%pr,from%real%t)
-            call nopcopy(out%imag%vx,out%imag%vy,out%imag%vz,out%imag%pr,out%imag%t, from%imag%vx,from%imag%vy,from%imag%vz,from%imag%pr,from%imag%t)
+            call nopcopy(out%real%vx,out%real%vy,out%real%vz,out%real%pr,out%real%t,
+     $  from%real%vx,from%real%vy,from%real%vz,from%real%pr,from%real%t)
+            call nopcopy(out%imag%vx,out%imag%vy,out%imag%vz,out%imag%pr,out%imag%t,
+     $  from%imag%vx,from%imag%vy,from%imag%vz,from%imag%pr,from%imag%t)
             out%time = from%time
             end subroutine cmplx_copy
 
@@ -193,8 +195,10 @@
             real , intent(in) :: alpha, beta
             select type(vec)
             type is(cmplx_nek_vector)
-            call nopaxpby(self%real%vx,self%real%vy,self%real%vz,self%real%pr,self%real%t,alpha,vec%real%vx,vec%real%vy,vec%real%vz,vec%real%pr,vec%real%t,beta)
-            call nopaxpby(self%imag%vx,self%imag%vy,self%imag%vz,self%imag%pr,self%imag%t,alpha,vec%imag%vx,vec%imag%vy,vec%imag%vz,vec%imag%pr,vec%imag%t,beta)
+            call nopaxpby(self%real%vx,self%real%vy,self%real%vz,self%real%pr,self%real%t,alpha,
+     $ vec%real%vx,vec%real%vy,vec%real%vz,vec%real%pr,vec%real%t,beta)
+            call nopaxpby(self%imag%vx,self%imag%vy,self%imag%vz,self%imag%pr,self%imag%t,alpha,
+     $ vec%imag%vx,vec%imag%vy,vec%imag%vz,vec%imag%pr,vec%imag%t,beta)
             end select
             return
             end subroutine cmplx_axpby
