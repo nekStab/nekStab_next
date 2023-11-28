@@ -17,30 +17,31 @@ class Spectre(object):
     def __init__(self, filename):
         print('Reading '+filename)
         data = np.transpose(np.genfromtxt(filename))
-        self.R = data[0]
-        self.I = data[1]
-        if data.shape[0] > 2:
+        num_columns = data.shape[0]
+
+        if num_columns == 2:
+            self.R = data[0]
+            self.I = data[1]
+            self.r = None
+        elif num_columns == 3:
+            self.R = data[0]
+            self.I = data[1]
             self.r = data[2]
         else:
-            self.r = None
+            raise ValueError(f"Expected 2 or 3 columns in file, but got {num_columns}")
 
 def plot_H(ax, R, I, r, sized = 0, color='gray',symb = 'o', label=None):
     iflabel = False
     theta = np.linspace(0.0,2.*np.pi,400);ax.plot(np.cos(theta),np.sin(theta), lw=0.2, color='r', ls='-')
     for k in range(len(R)):
         if r[k] < tolerance:
-            mod = np.sqrt( (R[k])**2 + (I[k])**2 )
-            if mod == 1:
-                print('Time derivative of the baseflow found=',mod,R[k],I[k])
-                plt.scatter(R[k],I[k], s=8+sized, alpha=0.8,marker='x',facecolors=color,edgecolors=color,linewidth=0.55)
-            elif mod > 1:
-                plt.scatter(R[k],I[k], s=5+sized, alpha=0.8,marker=symb,facecolors=color,edgecolors='k',linewidth=0.18)
+            plt.scatter(R[k],I[k], s=5+sized, alpha=1,marker=symb,facecolors=color,edgecolors='k',linewidth=0.18)
         else:
             if iflabel == False:
                 plt.scatter(R[k],I[k], s=5+sized, alpha=1,marker=symb,facecolors=color,edgecolors='k',linewidth=0.18,label=label)
                 iflabel=True
             else:
-                plt.scatter(R[k],I[k], s=5+sized, alpha=0.4,marker=symb,facecolors=color,edgecolors='k',linewidth=0.18)
+                plt.scatter(R[k],I[k], s=5+sized, alpha=1,marker=symb,facecolors=color,edgecolors='k',linewidth=0.18)
             
     ax.axhline(y=0., xmin=0, xmax=1, lw=0.2, color='k', ls=':')
     ax.axvline(x=0., ymin=0, ymax=1, lw=0.2, color='k', ls=':')
@@ -72,28 +73,50 @@ def plot_NS(ax, R, I, r, freq=False, sized = 0, color='gray', symb = 'o', label=
     ax.axvline(x=0., ymin=0, ymax=1, lw=0.2, color='k', ls=':')
     return
 
+def plot_S(ax, R, I, sized = 0, color='gray',symb = 'o', label=None):
+    iflabel = False
+    for k in range(len(R)):
+        #if I[k] < tolerance:
+        if iflabel == False:
+            plt.scatter(k+1,R[k], s=5+sized, alpha=1,marker=symb,facecolors=color,edgecolors='k',linewidth=0.18,label=label)
+            iflabel=True
+        else:
+            plt.scatter(k+1,R[k], s=5+sized, alpha=1,marker=symb,facecolors=color,edgecolors='k',linewidth=0.18)
+    return
 ########################################
 
 tolerance = 1.0e-6
 if __name__ == '__main__':
 
+    spectre_files_H = [
+        ('/home/rfrantz/nekStab/examples/cylinder/stability/direct/Spectre_Hd.dat', 22, 'k', 'o', r'$Re=50$ (legacy)'),
+        ('Spectrum_Hd.dat', 12, 'g', 'o', r'$Re=50$'),
+        ('Spectrum_Hf.dat', 12, 'm', 'd', r'$Re=50$ FD=2'),
+        ('Spectrum_Ha.dat', 20, 'r', '+', r'$Re=50^{\dagger}$')
+    ]
+
+    spectre_files_NS = [
+        ('/home/rfrantz/nekStab/examples/cylinder/stability/direct/Spectre_NSd.dat', 22, 'k', 'o', r'$Re=50$ (legacy)'),
+        ('Spectrum_NSd.dat', 12, 'g', 'o', r'$Re=50$'),
+        ('Spectrum_NSf.dat', 12, 'm', 'd', r'$Re=50$ FD=2'),
+        ('Spectrum_NSa.dat', 20, 'r', '+', r'$Re=50^{\dagger}$')
+    ]
+
+    spectre_files_S = [
+        ('Spectrum_Sp.dat', 12, 'g', 'o', r'$Re=50$ (transient growth)'),
+        ('Spectrum_Sr.dat', 12, 'r', 'o', r'$Re=50$ (resolvent)'),
+    ]
+
     fig=plt.figure();fig.set_size_inches(fig_width, fig_height)
     plt.axis('equal');xrz = [-1,0,1];xlabels = ['-1','0','1']
     plt.xticks(xrz,xlabels);plt.xlim(-1.1,1.1);plt.xlabel(r'$\Re (\mu)$')
     plt.yticks(xrz,xlabels);plt.ylim(-1.1,1.1);plt.ylabel(r'$\Im (\mu)$')
-
-    f = Spectre('/home/cobra/nekStab/examples/cylinder/stability/direct/Spectre_Hd.dat')
-    plot_H(plt, f.R, f.I, f.r, 22, 'k', 'o', r'$Re=50$ nekStab')
-    
-    f = Spectre('Spectre_Hd.dat')
-    plot_H(plt, f.R, f.I, f.r, 12, 'g', 'o', r'$Re=50$')
-    
-    f = Spectre('Spectre_Hf.dat')
-    plot_H(plt, f.R, f.I, f.r, 12, 'm', 'd', r'$Re=50$ FD=2')
-    
-    f = Spectre('Spectre_Ha.dat')
-    plot_H(plt, f.R, f.I, f.r, 20, 'r', '+', r'$Re=50^{\dagger}$')
-    
+    for file, size, color, marker, label in spectre_files_H:
+        try:
+            f = Spectre(file)
+            plot_H(plt, f.R, f.I, f.r, size, color, marker, label)
+        except Exception as e:
+            print(f"Error processing file {file}: {e}")
     fname='Spectre_H.'+formt
     plt.legend(loc='best',fontsize=6)
     plt.savefig(fname,format=formt,dpi=qual,bbox_inches=ajust);print('Saving '+fname);plt.close()
@@ -102,20 +125,31 @@ if __name__ == '__main__':
     fig=plt.figure();fig.set_size_inches(fig_width, fig_height)
     plt.ylabel(r'$\sigma$');#plt.xlim(-1,1)
     plt.xlabel(r'$f=\omega/2\pi$'); plt.ylim(-0.4,0.3)
-
-    f = Spectre('/home/cobra/nekStab/examples/cylinder/stability/direct/Spectre_NSd.dat')
-    plot_NS(plt, f.R, f.I, f.r, True, 22, 'k', 'o', r'$Re=50$ nekStab')
-
-    f = Spectre('Spectre_NSd.dat')
-    plot_NS(plt, f.R, f.I, f.r, True, 12, 'g', 'o', r'$Re=50$')
-    
-    f = Spectre('Spectre_NSf.dat')
-    plot_NS(plt, f.R, f.I, f.r, True, 12, 'm', 'd', r'$Re=50$ FD=2')
-
-    f = Spectre('Spectre_NSa.dat')
-    plot_NS(plt, f.R, f.I, f.r, True, 20, 'r', '+', r'$Re=50^{\dagger}$')
-
+    for file, size, color, marker, label in spectre_files_NS:
+        try:
+            f = Spectre(file)
+            plot_NS(plt, f.R, f.I, f.r, True, size, color, marker, label)
+        except Exception as e:
+            print(f"Error processing file {file}: {e}")
     fname='Spectre_NS.'+formt
+    plt.legend(loc='best',fontsize=6)
+    plt.savefig(fname,format=formt,dpi=qual,bbox_inches=ajust);print('Saving '+fname);plt.close()
+    print('------------------------------------------')
+
+
+
+    fig=plt.figure();fig.set_size_inches(fig_width, fig_height)
+    plt.ylabel(r'$\sigma$');#plt.xlim(-1,1)
+    plt.yscale('log');plt.xscale('log')
+    plt.xlabel(r'$i$')#; plt.ylim(-0.4,0.3)
+    for file, size, color, marker, label in spectre_files_S:
+        try:
+            f = Spectre(file)
+            plot_S(plt, f.R, f.I, size, color, marker, label)
+        except Exception as e:
+            print(f"Error processing file {file}: {e}")
+
+    fname='Spectre_S.'+formt
     plt.legend(loc='best',fontsize=6)
     plt.savefig(fname,format=formt,dpi=qual,bbox_inches=ajust);print('Saving '+fname);plt.close()
     print('------------------------------------------')

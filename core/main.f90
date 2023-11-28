@@ -155,8 +155,8 @@ c---------------------------------------------------------------------
          call rzero(fct,nx1*ny1*nz1*nelv)
 
          isNekStabinit = .true.
-      elseif (nid==0) then
-         print *,'NekStab already initialized'
+      ! elseif (nid==0) then
+      !    print *,'NekStab already initialized'
       endif
          
       end subroutine nekStab_init

@@ -40,7 +40,7 @@ else
     FFLAGS+=" -g" # Enables debugging information.
     FFLAGS+=" -fbacktrace" # Provides a backtrace in case of errors, useful for debugging.
     #FFLAGS+=" -std=legacy -Wall" # Provides a backtrace in case of errors, useful for debugging.
-    #FFLAGS+=" -fanalyzer" #
+    FFLAGS+=" -fanalyzer" #
     FFLAGS+=" -Ofast" #
     FFLAGS+=" -ffast-math" #
     FFLAGS+=" -funsafe-math-optimizations"
@@ -62,7 +62,7 @@ export USR_LFLAGS+=" -lopenblas" # OpenBlas is a faster alternative to LAPACK an
 # Linking with LightKrylov library
 #-------------------------------------------------------------------------------
 export USR_LFLAGS+=" -lLightKrylov"
-export USR_LFLAGS+=" -L$HOME/.local/lib -lLightKrylov"
+export USR_LFLAGS+=" -L$HOME/.local/lib"
 export FFLAGS+=" -I$HOME/.local/include"
 
 #-------------------------------------------------------------------------------
@@ -125,4 +125,11 @@ if [[ $1 != "clean" ]]; then
  touch $1.usr 
  make -j4 2>&1 | tee -a build.log
  set +o pipefail
+fi
+
+if [ $(ls *.mod 2> /dev/null | wc -l) -gt 0 ]; then
+    mv *.mod obj
+fi
+if [ $(ls *.smod 2> /dev/null | wc -l) -gt 0 ]; then
+    mv *.smod obj
 fi

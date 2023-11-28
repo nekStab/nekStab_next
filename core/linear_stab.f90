@@ -49,8 +49,8 @@
 
             call outpost_eigenspectrum(eigvals, residuals, 'Spectrum_NS'//trim(evop)//'.dat')
             call outpost_eigenvectors(X, eigvals, eigvecs, residuals)
-            call nek_end
 
+            if(nid.eq.0)write(*,*)'Linear stability finished.'
          end subroutine linear_stability_analysis
 
          subroutine transient_growth_analysis
@@ -80,8 +80,8 @@
             call svds(A, U, V, uvecs, vvecs, sigma, residuals, info, nev=schur_tgt, tolerance=eigen_tol)
             sigma = sigma ** 2
             call outpost_singvals(sigma(:), residuals(:), 'Spectrum_S'//trim(evop)//'.dat')
-            ! call outpost_singvectors(U, V, uvecs, vvecs, residuals)
-            !call nek_end
+            call outpost_singvectors(U, V, uvecs, vvecs, sigma, residuals)
+            if(nid.eq.0)write(*,*)'Transient growth finished.'
 
          end subroutine transient_growth_analysis
 
@@ -91,7 +91,7 @@
             include 'TOTAL'
 
             type(resolvent_op), allocatable :: R
-            type(real_nek_vector), allocatable :: U(:), V(:)
+            type(cmplx_nek_vector), allocatable :: U(:), V(:)
             real :: sigma(k_dim), uvecs(k_dim, k_dim), vvecs(k_dim, k_dim)
             real :: residuals(k_dim), alpha
             integer :: info, i
@@ -106,17 +106,17 @@
             do i = 1, size(U)
                call U(i)%zero() ; call V(i)%zero()
             end do
-            call prepare_seed(U)
+            call prepare_seed(U%real)
+            call prepare_seed(U%imag)
             
             evop = 'r'
             if(nid.eq.0)write(*,*)'Resolvent started: k_dim, schur_target, eigen_tol = ', k_dim, schur_tgt, eigen_tol
             call svds(R, U, V, uvecs, vvecs, sigma, residuals, info, nev=schur_tgt, tolerance=eigen_tol)
             sigma = sigma ** 2
-            call outpost_singvals(sigma(:), residuals(:), 'Spectrum_S'//trim(evop)//'.dat')
-            ! call outpost_singvectors(U, V, uvecs, vvecs, residuals)
             
+            call outpost_singvals(sigma(:), residuals(:), 'Spectrum_S'//trim(evop)//'.dat')
+            !call outpost_singvectors(U%real, V%real, uvecs, vvecs, sigma, residuals)          
             if(nid.eq.0)write(*,*)'Resolvent finished.'
-            call nek_end
          end subroutine resolvent_analysis
 
          subroutine prepare_base_flow
@@ -308,6 +308,7 @@
                   write(*,*) "Outposting eigenvector: ", i, "/", maxmodes
                   write(*,*) "  Sigma: ", real(eigvals(i))
                   write(*,*) "  Omega: ", aimag(eigvals(i))
+                  write(*,*) "  Residual: ", residuals(i)
               endif
                !     ----- Output the real part -----
                call get_vec(nek_vector, X(1:k_dim), real(eigvecs(:, i)))
@@ -347,14 +348,15 @@
              integer :: i
              character(len=3)  :: nU,nV
 
-             nU = trim(evop) // 'U' ! U matrix
-             nV = trim(evop) // 'V' ! V matrix
+             nU = trim(evop) // 'U_' ! U matrix
+             nV = trim(evop) // 'V_' ! V matrix
 
              do i = 1, maxmodes
 
                 if (nid == 0) then
                    write(*,*) "Outposting singular vector: ", i, "/", maxmodes
                    write(*,*) "  Sigma: ", sigma(i)
+                   write(*,*) "  Residual: ", residuals(i)
                endif
                 !     ----- Output the U matrix -----
                 call get_vec(nek_vector, U(1:k_dim), uvec(:, i))

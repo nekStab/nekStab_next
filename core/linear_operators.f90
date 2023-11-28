@@ -301,7 +301,6 @@
             class(abstract_vector), intent(out) :: vec_out
             logical, save :: orbit_alocated = .false.
 
-            if(nid.eq.0) write(*,*) 'direct_map, orbit_alocated=',orbit_alocated
             select type (vec_in)
              type is (cmplx_nek_vector)
                select type (vec_out)
@@ -320,34 +319,12 @@
             class(abstract_vector), intent(out) :: vec_out
             logical, save :: orbit_alocated = .false.
 
-            if(nid.eq.0) write(*,*) 'adjoint_map, orbit_alocated=',orbit_alocated
-            if(nid.eq.0) write(*,*) 'Checking types of vec_in and vec_out...'
-            select type (vec_in)
-               type is (cmplx_nek_vector)
-               if(nid.eq.0) write(*,*) 'vec_in is of type cmplx_nek_vector'
-               type is (real_nek_vector)
-               if(nid.eq.0) write(*,*) 'vec_in is of type real_nek_vector'
-               class default
-               if(nid.eq.0) write(*,*) 'vec_in is of an unknown type'
-            end select
-
-            select type (vec_out)
-               type is (cmplx_nek_vector)
-               if(nid.eq.0) write(*,*) 'vec_out is of type cmplx_nek_vector'
-               type is (real_nek_vector)
-               if(nid.eq.0) write(*,*) 'vec_out is of type real_nek_vector'
-               class default
-               if(nid.eq.0) write(*,*) 'vec_out is of an unknown type'
-            end select
-
-            if(nid.eq.0) write(*,*) 'setupLinearSolver ADJOINT'
-            call setupLinearSolver('ADJOINT', orbit_alocated)
-
             select type (vec_in)
              type is (cmplx_nek_vector)
                 select type (vec_out)
                   type is (cmplx_nek_vector)
-                     call resolvent_solver('ADJOINT', orbit_alocated, vec_in, vec_out)
+                  call setupLinearSolver('ADJOINT', orbit_alocated)
+                  call resolvent_solver('ADJOINT', orbit_alocated, vec_in, vec_out)
                 end select
             end select
          end subroutine adjoint_map
@@ -358,6 +335,9 @@
             include 'SIZE'
             include 'TOTAL'
             include 'ADJOINT'
+            !include 'INPUT'
+            !include 'PARALLEL'
+            !include 'RESTART'
 
             character(len=9), intent(in) :: solver_type
             logical, intent(inout) :: orbit_alocated
@@ -372,13 +352,13 @@
             type(gmres_opts)          :: opts
             integer                   :: info
             real :: tol
+            integer nopen(1000,2)
+            common /RES_WANT/ nopen
+            ! data    nopen  / 2000*0 /
 
             tol = max(param(21),param(22))
             Id = identity_linop()
             A = exponential_prop(fintim)
-
-            write(*,*)'solver_type in resolvent_solver=',solver_type
-            if(nid.eq.0)write(*,*)' A%t=',A%t
 
             !> Compute the right-hand side vector for gmres.
             allocate(b, source=in%real) ; call b%zero()
@@ -388,18 +368,17 @@
             call nopcopy(aimag(fRu),aimag(fRv),aimag(fRw),aimag(fRp),aimag(fRt), in%imag%vx,in%imag%vy,in%imag%vz,in%imag%pr,in%imag%t)
 
             !> Compute int_{0}^time exp( (t-s)*A ) * f(s) ds
-            call nekstab_solver('RESOLVENT '//solver_type, orbit_alocated, in%real, b)
+            call nekstab_solver(trim('RESOLVENT '//solver_type), orbit_alocated, in%real, b)
 
             !> GMRES solve to compute the post-transient response.
             opts = gmres_opts(verbose=.true., atol=tol, rtol=tol)
-            if (solver_type == 'DIRECT') then
-               S = axpby_linop(Id, A, 1.0D0, -1.0D0, .false., .true.)
+            S = axpby_linop(Id, A, 1.0D0, -1.0D0, .false., .true.)
+
+            if (INDEX(solver_type, 'DIRECT') > 0) then
                call gmres(S, b, out%real, info, options=opts, transpose=.true.)
-            else if(solver_type == 'ADJOINT') then
-               S = axpby_linop(Id, A, 1.0D0, -1.0D0, .false., .true.)
+            else if(INDEX(solver_type, 'ADJOINT') > 0) then
                call gmres(S, b, out%real, info, options=opts, transpose=.false.)
             endif
-
             A%t = A%t*0.25D0 ! integrate for 1/4 of the time
             if (nid.eq.0)write(*,*)'integrating for 1/4 of the time:',A%t
             call direct_solver(A, out%real, out%imag)

@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"fortran.provide.autocomplete": "fortls",
+		"fortran.provide.hover": "fortls",
+		"fortran.fortls.path": "/home/rfrantz/miniforge3/envs/next/bin/"
+	}
+}

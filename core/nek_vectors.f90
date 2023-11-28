@@ -103,9 +103,9 @@
                  if(ifpsco(m-1)) alpha = alpha + glsc3(self%t(:,m), bm1s, vec%t(:,m), nt)
                enddo
             endif
-            if ( uparam(1) .eq. 2.1 ) then
-                  alpha = alpha + self%time * vec%time
-            end if
+            !if ( uparam(1) .eq. 2.1 ) then
+            alpha = alpha + self%time * vec%time
+            !end if
             if ( isnan(alpha) ) then 
                   if (nid.eq.0) write(6,*) 'NaN detected in dot product'
                   call nek_end
