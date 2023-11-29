@@ -21,9 +21,9 @@ if command -v mpiifort >/dev/null 2>&1; then
     CC="mpiicc"
     FFLAGS+=" -extend-source" # Enables long lines.
     FFLAGS+=" -fixed" # Enables fixed-form source code, necessary as we mix .f90 files.
-    if [[ $(mpiicx --version 2>&1) =~ "oneapi" ]]; then
+    if [[ $(mpiicc --version 2>&1) =~ "oneapi" ]]; then
         FFLAGS+=" -qmkl"
-        CC="mpiicx"
+        CC="mpiicc"
         CFLAGS+=" -w"
     else
         FFLAGS+=" -mkl -xHost"
@@ -39,11 +39,14 @@ else
     FFLAGS+=" -march=native" # Enables all instruction subsets supported by the local machine.
     FFLAGS+=" -g" # Enables debugging information.
     FFLAGS+=" -fbacktrace" # Provides a backtrace in case of errors, useful for debugging.
-    #FFLAGS+=" -std=legacy -Wall" # Provides a backtrace in case of errors, useful for debugging.
     FFLAGS+=" -fanalyzer" #
-    FFLAGS+=" -Ofast" #
-    FFLAGS+=" -ffast-math" #
-    FFLAGS+=" -funsafe-math-optimizations"
+    # FFLAGS+=" -Ofast" #
+    # FFLAGS+=" -ffast-math" #
+    # FFLAGS+=" -funsafe-math-optimizations"
+
+    # comment Nek5000/core/makenek.inc:226 with : sed -i '226s/^/#/' Nek5000/core/makenek.inc
+    #FFLAGS+=" -std=legacy -Wall" # Provides a backtrace in case of errors, useful for debugging.
+
 fi
 
 #-------------------------------------------------------------------------------

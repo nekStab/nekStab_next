@@ -383,6 +383,8 @@
             if (nid.eq.0)write(*,*)'integrating for 1/4 of the time:',A%t
             call direct_solver(A, out%real, out%imag)
 
+            if (nid.eq.0)write(*,*) 'Resolvent solver finished.'
+
          end subroutine resolvent_solver
 
       end module LinearOperators

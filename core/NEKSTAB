@@ -36,7 +36,7 @@
       real :: xck, yck, zck
       integer :: findiff_order
       real :: coefs(4), ampls(4)
-      common /nStab_fd/ coefs, ampls, findiff_order
+      common /nStab_fd/ xck, yck, zck, coefs, ampls, findiff_order
       
       ! Arrays for base flow variables
       real :: ubase(lx1,ly1,lz1,lelv), vbase(lx1,ly1,lz1,lelv)
