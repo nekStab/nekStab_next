@@ -374,6 +374,8 @@
             !> Compute the right-hand side vector for gmres.
             allocate(b, source=in%real) ; call b%zero()
 
+            if (nid.eq.0)write(*,*) 'Computing forcing for resolvent solver.'
+
             !> Sets the forcing spacial support.
             call nopcopy(real(fRu),real(fRv),real(fRw),real(fRp),real(fRt), in%real%vx,in%real%vy,in%real%vz,in%real%pr,in%real%t)
             call nopcopy(aimag(fRu),aimag(fRv),aimag(fRw),aimag(fRp),aimag(fRt), in%imag%vx,in%imag%vy,in%imag%vz,in%imag%pr,in%imag%t)
@@ -381,9 +383,13 @@
             call outpost2(real(fRu),real(fRv),real(fRw),real(fRp),real(fRt), nof, 'fRr') 
             call outpost2(aimag(fRu),aimag(fRv),aimag(fRw),aimag(fRp),aimag(fRt), nof, 'fRi') 
 
+
+            if (nid.eq.0)write(*,*) 'Computing resolvent for resolvent solver.'
             !> Compute int_{0}^time exp( (t-s)*A ) * f(s) ds
             call nekstab_solver(trim('RESOLVENT '//solver_type), orbit_alocated, in%real, b)
+            call outpost2(b%vx,b%vy,b%vz,b%pr,b%t, nof, 'bRr')
 
+            if (nid.eq.0)write(*,*) 'Computing GMRES step.'
             !> GMRES solve to compute the post-transient response.
             opts = gmres_opts(verbose=.true., atol=tol, rtol=tol)
             S = axpby_linop(Id, A, 1.0D0, -1.0D0, .false., .true.)
@@ -398,11 +404,8 @@
             !A%t = A%t*0.25D0 
             if (nid.eq.0)write(*,*)'integrating for 1/4 of the time:',A%t
             call direct_solver(A, out%real, out%imag)
-
-
             call outpost2(out%real%vx,out%real%vy,out%real%vz,out%real%pr,out%real%t, nof, 'oRr')
             call outpost2(out%imag%vx,out%imag%vy,out%imag%vz,out%imag%pr,out%imag%t, nof, 'oRi')
-
 
             if (nid.eq.0)write(*,*) 'Resolvent solver finished.'
             resolvent_counter = resolvent_counter + 1

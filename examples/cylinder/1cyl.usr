@@ -1,23 +1,24 @@
 c-----------------------------------------------------------------------
       subroutine userchk
       use LinearStab
+      implicit none
       include 'SIZE'
       include 'TOTAL'
-
       call nekstab_init
 
-      if(istep.eq.0)then !change defaults
+      !if(istep.eq.0)then !change defaults
 
             xLspg = 5
             xRspg = 5
-            spng_str = 1.7
+            spng_st = 1.7!; call bcast(spng_str, wdsize)
 
             k_dim = 200
             schur_tgt = 2
             maxmodes = 2 
             findiff_order = 1
-            
-      endif
+            call activate_sponge ! activate sponge
+
+      !endif
 
 
       ! isNewtonFP  = .true.!# ; uparam(1) = 2.0
@@ -26,15 +27,19 @@ c-----------------------------------------------------------------------
 
       ! isDirect= .true.
       ! call linear_stability_analysis
+      ! isDirect= .false.
       
-      ! isDirect= .false.; isAdjoint= .true.
+      ! isAdjoint= .true.
       ! call linear_stability_analysis
-
-      ! isAdjoint= .false.; isTransientGrowth= .true.
+      ! isAdjoint= .false.
+      
+      ! isTransientGrowth= .true.
       ! call transient_growth_analysis
-
-      isTransientGrowth= .false.; isResolvent= .true.
+      ! isTransientGrowth= .false.
+      
+      isResolvent= .true.
       call resolvent_analysis
+      isResolvent= .false.
 
       call nek_end
 

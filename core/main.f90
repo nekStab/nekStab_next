@@ -100,40 +100,14 @@ c---------------------------------------------------------------------
             print *,'  / __ \ / _ \ / //_/\__ \ / __// __ `// __ \'
             print *,' / / / //  __// ,<  ___/ // /_ / /_/ // /_/ /'
             print *,'/_/ /_/ \___//_/|_|/____/ \__/ \__,_//_.___/ '
-            print *,'COPYRIGHT (c) 2020-2023 DynFluid Laboratoire Paris ',NSVERSION
+            print *,'COPYRIGHT (c) 2020-2024 DynFluid Laboratoire Paris ',NSVERSION
             print *,'Nek5000 ', NVERSION
             print *,''
          endif
       
          call copy(bm1s, bm1, nv) ! never comment this !
-      
-         if(spng_st.ne.0)then !sponge on
-      
-            if(nid.eq.0)write(6,*)
-            if(nid.eq.0)write(6,*)' Initializing sponge...'
-            if(nid.eq.0)write(6,*)' Sponge strenght:',spng_st
-            if(spng_st.lt.0)then
-               spng_st=abs(spng_st)
-               if(nid.eq.0)write(6,*)' Ensure positive sponge strenght:',spng_st
-            endif
-            call spng_init
-      
-      !     applying sponge function to BM1 matrix to remove the sponge zone from eigensolver
-            do i=1,nv
-               if( spng_fn( i ) .ne. 0 ) bm1s( i,1,1,1 )=0.0d0
-            enddo
-      
-      !     outposting BM1s to disk for check
-      !     ifto_sav = ifto; ifpo_sav = ifpo
-      !     ifvo=.false.; ifpo = .false.; ifto = .true.
-      !     call outpost(vx,vy,vz,pr,bm1s,'BMS')
-      !     ifvo=.true.; ifpo = ifpo_sav; ifto = ifto_sav
-      
-            if(nid.eq.0)write(6,*)'Sponge activated.'
-            if(nid.eq.0)write(6,*)
-         endif
          ifbfcv = .false.
-      
+
          nof = 0
          scal = .false.
          do i = 1, size(ifpsco)
@@ -158,7 +132,7 @@ c---------------------------------------------------------------------
       ! elseif (nid==0) then
       !    print *,'NekStab already initialized'
       endif
-         
+   
       end subroutine nekStab_init
 c---------------------------------------------------------------------
       subroutine nekStab_set_uparam

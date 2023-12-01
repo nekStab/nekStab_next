@@ -113,7 +113,7 @@
             
             evop = 'r'
             if(nid.eq.0)write(*,*)'Resolvent started: k_dim, schur_target, eigen_tol = ', k_dim, schur_tgt, eigen_tol
-            call svds(R, U, V, uvecs, vvecs, sigma, residuals, info, nev=schur_tgt, tolerance=eigen_tol)
+            call svds(R, U, V, uvecs, vvecs, sigma, residuals, info, nev=schur_tgt, tolerance=eigen_tol, verbosity=.true.)
             sigma = sigma ** 2
             
             call outpost_singvals(sigma(:), residuals(:), 'Spectrum_S'//trim(evop)//'.dat')
