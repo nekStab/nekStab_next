@@ -8,16 +8,21 @@ c-----------------------------------------------------------------------
 
       if(istep.eq.0)then !change defaults
 
-            ! xLspg = 1; call bcast(xLspg , wdsize)
-            ! xRspg = 5; call bcast(xRspg , wdsize)
-            ! spng_str = 1.7;
-    
+            xLspg = 5
+            xRspg = 5
+            spng_str = 1.7
+
             k_dim = 200
             schur_tgt = 2
             maxmodes = 2 
             findiff_order = 1
             
       endif
+
+
+      ! isNewtonFP  = .true.!# ; uparam(1) = 2.0
+      ! call newton_krylov
+      ! isNewtonFP  = .false.!; uparam(1) = 0.0
 
       ! isDirect= .true.
       ! call linear_stability_analysis
@@ -30,6 +35,8 @@ c-----------------------------------------------------------------------
 
       isTransientGrowth= .false.; isResolvent= .true.
       call resolvent_analysis
+
+      call nek_end
 
       ! call nekStab_outpost   ! outpost vorticity
       ! call nekStab_comment   ! print comments

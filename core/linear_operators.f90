@@ -27,7 +27,7 @@
          !--------------------------------------
 
          type, extends(abstract_linop), public :: resolvent_op
-            real :: t
+            real :: t ! not omega here ! 
          contains
             private
             procedure, pass(self), public :: matvec  => direct_map
@@ -146,6 +146,16 @@
 
             end if
 
+            if (nid.eq.0) then
+               write(*,*) 'Setting up linear solver with solver_type=',solver_type
+               write(*,*) '   ifbase, ifpert, ifadj=',ifbase,ifpert,ifadj
+               write(*,*) '   orbit_alocated, ifstorebase, nsteps=',orbit_alocated,ifstorebase,nsteps
+               write(*,*) '   isNewtonFP, isNewtonPO, isNewtonPO_T=',isNewtonFP, isNewtonPO, isNewtonPO_T
+               write(*,*) '   isDirect, isAdjoint, isTransientGrowth, isResolvent=',isDirect, isAdjoint, isTransientGrowth, isResolvent
+               write(*,*) '   isFloquetDirect, isFloquetAdjoint, isFloquetTransientGrowth, isFloquetResolvent=',isFloquetDirect, isFloquetAdjoint, isFloquetTransientGrowth, isFloquetResolvent
+               write(*,*) '   '
+            end if
+
          end subroutine setupLinearSolver
 
          subroutine nekstab_solver(solver_type, orbit_stored, in, out)
@@ -163,11 +173,15 @@
             type(real_nek_vector) :: work, pert
             real :: epsilon0, work_norm
             integer :: i, m
-            integer, save :: krylov_counter = 1, matvec_counter = 0
+            integer :: krylov_counter = 1
+            integer, save :: matvec_counter = 0
 
             nt = nx1*ny1*nz1*nelt
 
-            if (nid.eq.0) write(*,*) 'nekstab_solver with :',solver_type
+            ! if (nid.eq.0) then
+            !    write(*,*) 'nekstab_solver with :',trim(solver_type)
+            !    write(*,*) 'ifbase, ifpert, ifadj=',ifbase,ifpert,ifadj
+            ! endif 
 
             ! --> Setup the Nek parameters for the finite-differences approximation.
             if (solver_type == 'DIRECT FD') then
@@ -335,9 +349,6 @@
             include 'SIZE'
             include 'TOTAL'
             include 'ADJOINT'
-            !include 'INPUT'
-            !include 'PARALLEL'
-            !include 'RESTART'
 
             character(len=9), intent(in) :: solver_type
             logical, intent(inout) :: orbit_alocated
@@ -351,14 +362,14 @@
             class(real_nek_vector), allocatable :: b
             type(gmres_opts)          :: opts
             integer                   :: info
+            integer, save :: resolvent_counter = 1
             real :: tol
-            integer nopen(1000,2)
-            common /RES_WANT/ nopen
-            ! data    nopen  / 2000*0 /
 
             tol = max(param(21),param(22))
             Id = identity_linop()
             A = exponential_prop(fintim)
+
+            if (nid.eq.0)write(*,*) 'Starting resolvent solver, iteration:',resolvent_counter
 
             !> Compute the right-hand side vector for gmres.
             allocate(b, source=in%real) ; call b%zero()
@@ -366,6 +377,9 @@
             !> Sets the forcing spacial support.
             call nopcopy(real(fRu),real(fRv),real(fRw),real(fRp),real(fRt), in%real%vx,in%real%vy,in%real%vz,in%real%pr,in%real%t)
             call nopcopy(aimag(fRu),aimag(fRv),aimag(fRw),aimag(fRp),aimag(fRt), in%imag%vx,in%imag%vy,in%imag%vz,in%imag%pr,in%imag%t)
+
+            call outpost2(real(fRu),real(fRv),real(fRw),real(fRp),real(fRt), nof, 'fRr') 
+            call outpost2(aimag(fRu),aimag(fRv),aimag(fRw),aimag(fRp),aimag(fRt), nof, 'fRi') 
 
             !> Compute int_{0}^time exp( (t-s)*A ) * f(s) ds
             call nekstab_solver(trim('RESOLVENT '//solver_type), orbit_alocated, in%real, b)
@@ -379,11 +393,19 @@
             else if(INDEX(solver_type, 'ADJOINT') > 0) then
                call gmres(S, b, out%real, info, options=opts, transpose=.false.)
             endif
-            A%t = A%t*0.25D0 ! integrate for 1/4 of the time
+
+            A = exponential_prop(fintim*0.25D0) ! integrate for 1/4 of the time
+            !A%t = A%t*0.25D0 
             if (nid.eq.0)write(*,*)'integrating for 1/4 of the time:',A%t
             call direct_solver(A, out%real, out%imag)
 
+
+            call outpost2(out%real%vx,out%real%vy,out%real%vz,out%real%pr,out%real%t, nof, 'oRr')
+            call outpost2(out%imag%vx,out%imag%vy,out%imag%vz,out%imag%pr,out%imag%t, nof, 'oRi')
+
+
             if (nid.eq.0)write(*,*) 'Resolvent solver finished.'
+            resolvent_counter = resolvent_counter + 1
 
          end subroutine resolvent_solver
 

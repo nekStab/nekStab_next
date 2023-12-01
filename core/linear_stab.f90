@@ -108,6 +108,8 @@
             end do
             call prepare_seed(U%real)
             call prepare_seed(U%imag)
+            ! call prepare_seed(V%real)
+            ! call prepare_seed(V%imag)
             
             evop = 'r'
             if(nid.eq.0)write(*,*)'Resolvent started: k_dim, schur_target, eigen_tol = ', k_dim, schur_tgt, eigen_tol
@@ -152,6 +154,7 @@
                   write(*,*) 'Floquet mode activated. Getting endTime from file: ', param(10)
                end if
             end if
+            ! else param(10) = fintim (default)
 
             ! Limit number of perturbation modes to 1
             if (param(31) > 1) then
@@ -210,6 +213,7 @@
 
                if(nid.eq.0)write(*,*)'Filling fields with noise...'
 
+               call noprzero(seed%vx,seed%vy,seed%vz,seed%pr,seed%t)
                call op_add_noise(seed%vx,seed%vy,seed%vz)
                if (ifto) call add_noise_scal(seed%t(:,1),9.0e4, 3.0e3, 4.0e5)
                if (ldimt.gt.1) then

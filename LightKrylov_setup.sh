@@ -72,6 +72,13 @@ if command -v mpiifort >/dev/null 2>&1; then
 
 else
     fpm install --compiler 'mpif90' --flag "-O3 -march=native -funroll-loops -ffast-math"
+    fpm install --compiler 'mpif90' --flag "-O3 -march=native -funroll-loops -ffast-math -g -fbacktrace -fanalyzer -fbounds-check"
+
+
+    fpm test --compiler 'mpif90' --flag "-O3 -march=native -funroll-loops -ffast-math -g -fbacktrace"
+    fpm clean --all
+    fpm install --compiler 'mpif90' --flag "-O3 -march=native -funroll-loops -ffast-math -g -fbacktrace -fanalyzer"
+    
     #fpm test --verbose --flag "-Wall -Wextra -g -fbacktrace -fbounds-check"
 
 fi

@@ -39,12 +39,14 @@ else
     FFLAGS+=" -march=native" # Enables all instruction subsets supported by the local machine.
     FFLAGS+=" -g" # Enables debugging information.
     FFLAGS+=" -fbacktrace" # Provides a backtrace in case of errors, useful for debugging.
-    FFLAGS+=" -fanalyzer" #
-    # FFLAGS+=" -Ofast" #
-    # FFLAGS+=" -ffast-math" #
-    # FFLAGS+=" -funsafe-math-optimizations"
+    FFLAGS+=" -fanalyzer" # Enable the Clang Static Analyzer for code analysis
+    # FFLAGS+=" -Ofast" # Enable aggressive optimization level for maximum performance
+    # FFLAGS+=" -ffast-math" # Enable fast math optimizations for floating-point operations
+    # FFLAGS+=" -funsafe-math-optimizations" # Enable unsafe math optimizations for improved performance
 
-    # comment Nek5000/core/makenek.inc:226 with : sed -i '226s/^/#/' Nek5000/core/makenek.inc
+
+    # comment Nek5000/core/makenek.inc:226 with : sed -i '226s/^/#/' $HOME/nextStab/Nek5000/core/makenek.inc
+    FFLAGS+=" -std=legacy -w" # Provides a backtrace in case of errors, useful for debugging.
     #FFLAGS+=" -std=legacy -Wall" # Provides a backtrace in case of errors, useful for debugging.
 
 fi
