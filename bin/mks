@@ -2,11 +2,13 @@
 set -a
 
 # Compiler and architecture settings
-FC=""
-CC=""
-FFLAGS=""
-USR_LFLAGS=""
-ar=""
+FC="mpif90" # default changed from mpif77 
+CC="mpicc" # default 
+LD="$FC" # linker ! 
+#FFLAGS="" # fortran flags - set here
+#CFLAGS="" # not set here
+#USR_LFLAGS="" # linking flags
+ar="" # architecture specific 
 
 # Fetch version information for user reference
 N_VERSION=$(git -C $NEK_SOURCE_ROOT describe --tag --long --always)
@@ -23,7 +25,7 @@ if command -v mpiifort >/dev/null 2>&1; then
     FFLAGS+=" -fixed" # Enables fixed-form source code, necessary as we mix .f90 files.
     if [[ $(mpiicc --version 2>&1) =~ "oneapi" ]]; then
         FFLAGS+=" -qmkl"
-        CC="mpiicc"
+        CC="mpiicx"
         CFLAGS+=" -w"
     else
         FFLAGS+=" -mkl -xHost"
@@ -32,21 +34,19 @@ if command -v mpiifort >/dev/null 2>&1; then
     USR_LFLAGS+=" -I${MKLROOT}/include -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a ${MKLROOT}/lib/intel64/libmkl_sequential.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -lpthread -lm -ldl"
 else
     echo "Compiler found: $(mpif90 --version | head -n1)"
-    FC="mpif90"
-    CC="mpicc"
     FFLAGS+=" -ffixed-form" # Enables fixed-form source code, necessary as we mix .f90 files.
     FFLAGS+=" -ffixed-line-length-none" # Allows for any line length in fixed-form source code.
     FFLAGS+=" -march=native" # Enables all instruction subsets supported by the local machine.
     FFLAGS+=" -g" # Enables debugging information.
     FFLAGS+=" -fbacktrace" # Provides a backtrace in case of errors, useful for debugging.
-    FFLAGS+=" -fanalyzer" # Enable the Clang Static Analyzer for code analysis
+    #FFLAGS+=" -fanalyzer" # Enable the Clang Static Analyzer for code analysis
     # FFLAGS+=" -Ofast" # Enable aggressive optimization level for maximum performance
     # FFLAGS+=" -ffast-math" # Enable fast math optimizations for floating-point operations
     # FFLAGS+=" -funsafe-math-optimizations" # Enable unsafe math optimizations for improved performance
 
 
     # comment Nek5000/core/makenek.inc:226 with : sed -i '226s/^/#/' $HOME/nextStab/Nek5000/core/makenek.inc
-    FFLAGS+=" -std=legacy -w" # Provides a backtrace in case of errors, useful for debugging.
+    #FFLAGS+=" -std=legacy -w" # Provides a backtrace in case of errors, useful for debugging.
     #FFLAGS+=" -std=legacy -Wall" # Provides a backtrace in case of errors, useful for debugging.
 
 fi
@@ -56,12 +56,11 @@ fi
 #-------------------------------------------------------------------------------
 # Lapack is a library of linear algebra routines.
 # Blas (Basic Linear Algebra Subprograms) is used by Lapack.
-
-#export USR_LFLAGS+=" -llapack -lblas"
+export USR_LFLAGS+=" -llapack -lblas"
 
 #export USR_LFLAGS+=" -L/usr/local/opt/openblas/lib"
 #export FFLAGS+=" -I/usr/local/opt/openblas/include"
-export USR_LFLAGS+=" -lopenblas" # OpenBlas is a faster alternative to LAPACK and BLAS
+#export USR_LFLAGS+=" -lopenblas" # OpenBlas is a faster alternative to LAPACK and BLAS
 
 #-------------------------------------------------------------------------------
 # Linking with LightKrylov library
