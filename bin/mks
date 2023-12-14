@@ -1,16 +1,15 @@
 #!/bin/bash
-set -a
+set -a  # export all variables and functions defined in the script
 
 # Compiler and architecture settings
-FC="mpif90" # default changed from mpif77 
+FC="mpif90" # default (changed from mpif77)
 CC="mpicc" # default 
-LD="$FC" # linker ! 
-#FFLAGS="" # fortran flags - set here
-#CFLAGS="" # not set here
-#USR_LFLAGS="" # linking flags
+FFLAGS="" # fortran flags
+CFLAGS="" # c flags
+USR_LFLAGS="" # linking flags
 ar="" # architecture specific 
 
-# Fetch version information for user reference
+# Fetch version information to print in the initialisation message
 N_VERSION=$(git -C $NEK_SOURCE_ROOT describe --tag --long --always)
 NS_VERSION=$(git -C $NEKSTAB_SOURCE_ROOT describe --tag --long --always)
 
@@ -19,18 +18,25 @@ NS_VERSION=$(git -C $NEKSTAB_SOURCE_ROOT describe --tag --long --always)
 #-------------------------------------------------------------------------------
 if command -v mpiifort >/dev/null 2>&1; then
     echo "Compiler found: $(mpiifort -v)"
+
     FC="mpiifort"
     CC="mpiicc"
-    FFLAGS+=" -extend-source" # Enables long lines.
-    FFLAGS+=" -fixed" # Enables fixed-form source code, necessary as we mix .f90 files.
-    if [[ $(mpiicc --version 2>&1) =~ "oneapi" ]]; then
-        FFLAGS+=" -qmkl"
+    FFLAGS+=" -fixed -extend-source" # Enables long lines.
+    if command -v mpiifx >/dev/null 2>&1; then
+        echo "Using LLVM version of Intel compiler..."
+        FC="mpiifx"
         CC="mpiicx"
-        CFLAGS+=" -w"
+        CFLAGS+=" -w -Wno-unused-command-line-argument"
+        FFLAGS+=" -w -xHost -qmkl" # Suppresses all warning messages (otherwise will not compile nek5000) 
     else
-        FFLAGS+=" -mkl -xHost"
+        echo "LLVM not found, using classic."
+        export USR_LFLAGS+=" -qmkl"
+        #FFLAGS+=" -ipo -O3 -no-prec-div -fp-model fast=2"
     fi
-    FFLAGS+=" -g -traceback"
+
+    FFLAGS+=" -g -traceback" # Enables debugging information.
+    FLAGS+=" -fanalyser" # Enable the Clang Static Analyzer for code analysis
+
     USR_LFLAGS+=" -I${MKLROOT}/include -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a ${MKLROOT}/lib/intel64/libmkl_sequential.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -lpthread -lm -ldl"
 else
     echo "Compiler found: $(mpif90 --version | head -n1)"
@@ -44,7 +50,6 @@ else
     # FFLAGS+=" -ffast-math" # Enable fast math optimizations for floating-point operations
     # FFLAGS+=" -funsafe-math-optimizations" # Enable unsafe math optimizations for improved performance
 
-
     # comment Nek5000/core/makenek.inc:226 with : sed -i '226s/^/#/' $HOME/nextStab/Nek5000/core/makenek.inc
     #FFLAGS+=" -std=legacy -w" # Provides a backtrace in case of errors, useful for debugging.
     #FFLAGS+=" -std=legacy -Wall" # Provides a backtrace in case of errors, useful for debugging.
@@ -56,12 +61,17 @@ fi
 #-------------------------------------------------------------------------------
 # Lapack is a library of linear algebra routines.
 # Blas (Basic Linear Algebra Subprograms) is used by Lapack.
-export USR_LFLAGS+=" -llapack -lblas"
-
-#export USR_LFLAGS+=" -L/usr/local/opt/openblas/lib"
-#export FFLAGS+=" -I/usr/local/opt/openblas/include"
-#export USR_LFLAGS+=" -lopenblas" # OpenBlas is a faster alternative to LAPACK and BLAS
-
+if [ "$FC" = "mpif90" ]; then
+   if ldconfig -p | grep -q libopenblas; then
+      echo "OpenBLAS exists in path, using it:"
+      export USR_LFLAGS+=" -lopenblas"
+      export USR_LFLAGS+=" -L/usr/local/opt/openblas/lib"
+      export FFLAGS+=" -I/usr/local/opt/openblas/include"
+   else
+      echo "OpenBLAS does not exist, using LAPACK and BLAS:"
+      export USR_LFLAGS+=" -llapack -lblas"
+   fi
+fi
 #-------------------------------------------------------------------------------
 # Linking with LightKrylov library
 #-------------------------------------------------------------------------------
@@ -69,6 +79,8 @@ export USR_LFLAGS+=" -lLightKrylov"
 export USR_LFLAGS+=" -L$HOME/.local/lib"
 export FFLAGS+=" -I$HOME/.local/include"
 
+#-------------------------------------------------------------------------------
+LD="$FC" # linker ! 
 #-------------------------------------------------------------------------------
 # Architecture Detection
 #-------------------------------------------------------------------------------
@@ -81,7 +93,7 @@ case $(uname -s) in
         ;;
     Linux)
         case $(uname -p) in
-            x86_64) ar="x86_64"; FFLAGS+="  -mcmodel=large" ;;
+            x86_64) ar="x86_64"; FFLAGS+=" -mcmodel=large" ;;
             arm)    ar="arm" ;;
         esac
         ;;
@@ -110,6 +122,10 @@ USR+=" IO.o"
 USR+=" postproc.o"
 USR+=" newton_krylov.o"
 USR+=" sensitivity.o"
+# Check if the makefile_usr file exists and source it
+if [ -f "makefile_usr" ]; then
+    source makefile_usr
+fi
 export USR
 
 # Output summary of settings
@@ -119,7 +135,28 @@ echo "preparing compilation with: $(which $FC; echo $FFLAGS $USR_LFLAGS)"
 
 # Update makefile and static variables
 cp -v $NEKSTAB_SOURCE_ROOT/core/NEKSTAB NEKSTAB.inc
-echo "include $NEKSTAB_SOURCE_ROOT/core/makefile_nekStab" > makefile_usr.inc
+
+FILE="SIZE"
+INCLUDE_LINE="include 'NEKSTAB.inc'"          # respect spaces
+grep -q "^ *$INCLUDE_LINE" "$FILE" || echo -e "\n      $INCLUDE_LINE" >> "$FILE"
+
+# Define the file and the include line
+FILE="makefile_usr.inc"
+INCLUDE_LINE="include $NEKSTAB_SOURCE_ROOT/core/makefile_nekStab"
+# Check if the file exists
+if [ -f "$FILE" ]; then
+   # Check if an include line for makefile_nekStab is in the file
+   if grep -q "^include .*makefile_nekStab" "$FILE"; then
+      # The include line is in the file, replace it
+      sed -i "s|^include .*makefile_nekStab|$INCLUDE_LINE|" "$FILE"
+   else
+      # The include line is not in the file, append it
+      echo -e "\n$INCLUDE_LINE" >> "$FILE"
+   fi
+else
+   # The file does not exist, create it with the include line
+   echo "$INCLUDE_LINE" > "$FILE"
+fi
 
 set +a -e
 $NEK_SOURCE_ROOT/bin/nekconfig $@
@@ -132,8 +169,8 @@ if [[ $1 != "clean" ]]; then
 fi
 
 if [ $(ls *.mod 2> /dev/null | wc -l) -gt 0 ]; then
-    mv *.mod obj
+   mv *.mod obj
 fi
 if [ $(ls *.smod 2> /dev/null | wc -l) -gt 0 ]; then
-    mv *.smod obj
+   mv *.smod obj
 fi
