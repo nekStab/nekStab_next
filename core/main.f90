@@ -1,4 +1,4 @@
-c---------------------------------------------------------------------
+      !---------------------------------------------------------------------
       subroutine nekStab_setDefault
       !     specifying default values for nekStab
       
@@ -14,13 +14,13 @@ c---------------------------------------------------------------------
          glob_skip = 10            ! global energy computation skip frequency
          findiff_order = 1         ! finite difference order for the Frechet derivative
          epsilon_base = 1.0e-6          ! finite difference perturbation scale parameter
-
+      
          bst_skp = 10              ! boostconv skip iterations
          bst_snp = 10              ! bootsconv residual subspace matrix size
       
-         ifres  = .false.          ! outpost restart files (KRY*, HES*)
-         ifvor  = .false.          ! outpost vorticity (vor* omega_x,omega_y,omega_z components)
-         ifvox  = .false.          ! outpost vortex (vox*: q,lambda2,omega criterions)
+         ifres = .false.          ! outpost restart files (KRY*, HES*)
+         ifvor = .false.          ! outpost vorticity (vor* omega_x,omega_y,omega_z components)
+         ifvox = .false.          ! outpost vortex (vox*: q,lambda2,omega criterions)
          ifldbf = .true.           ! load base flow for stability computations
          ifbf2D = .false.          ! force 2D base flow solution
          ifstorebase = .true.      ! store base flow for Floquet analysis (dynamic allocated)
@@ -32,17 +32,17 @@ c---------------------------------------------------------------------
       !  Note: if ifseed_* all are false, 'useric' subroutine prescribes the initial seed
       
       !  Define here the probe position for zero-crossing vertical velocity analysis !
-         xck = 2.0D0; call bcast(xck, wdsize)
-         yck = 0.0D0; call bcast(yck, wdsize)
-         zck = 0.0D0; call bcast(zck, wdsize)
+         xck = 2.0d0; call bcast(xck, wdsize)
+         yck = 0.0d0; call bcast(yck, wdsize)
+         zck = 0.0d0; call bcast(zck, wdsize)
       
       ! Sponge zone parameters (modified from KTH Toolbox)
-         xLspg   = 0.0d0; call bcast(xLspg, wdsize) ! x left
-         xRspg   = 0.0d0; call bcast(xRspg, wdsize) ! x right
-         yLspg   = 0.0d0; call bcast(yLspg, wdsize)
-         yRspg   = 0.0d0; call bcast(yRspg, wdsize)
-         zLspg   = 0.0d0; call bcast(zLspg, wdsize)
-         zRspg   = 0.0d0; call bcast(zRspg, wdsize)
+         xLspg = 0.0d0; call bcast(xLspg, wdsize) ! x left
+         xRspg = 0.0d0; call bcast(xRspg, wdsize) ! x right
+         yLspg = 0.0d0; call bcast(yLspg, wdsize)
+         yRspg = 0.0d0; call bcast(yRspg, wdsize)
+         zLspg = 0.0d0; call bcast(zLspg, wdsize)
+         zRspg = 0.0d0; call bcast(zRspg, wdsize)
          acc_spg = 0.333d0; call bcast(acc_spg, wdsize) !percentage for the acceleration phase in the sponge (e.g. 1/3)
          spng_st = 0.0d0; call bcast(spng_st, wdsize)
       
@@ -73,7 +73,7 @@ c---------------------------------------------------------------------
          call bcast(ifdyntol, lsize)
       
       end subroutine nekStab_setDefault
-c---------------------------------------------------------------------
+      !---------------------------------------------------------------------
       subroutine nekStab_init
          use krylov_subspace
          use LinearStab
@@ -81,172 +81,172 @@ c---------------------------------------------------------------------
          include 'SIZE'
          include 'TOTAL'
          logical scal
-         real glmin,glmax
+         real glmin, glmax
          integer i
          nv = nx1*ny1*nz1*nelv
       
-         if (.not.isNekStabinit)then
-         call nekStab_setDefault
-         call nekStab_usrchk ! where user change defaults
-         call nekStab_printNEKParams
+         if (.not. isNekStabinit) then
+            call nekStab_setDefault
+            call nekStab_usrchk ! where user change defaults
+            call nekStab_printNEKParams
       
-         xmn = glmin(xm1,nv); xmx = glmax(xm1,nv)
-         ymn = glmin(ym1,nv); ymx = glmax(ym1,nv)
-         zmn = glmin(zm1,nv); zmx = glmax(zm1,nv)
+            xmn = glmin(xm1, nv); xmx = glmax(xm1, nv)
+            ymn = glmin(ym1, nv); ymx = glmax(ym1, nv)
+            zmn = glmin(zm1, nv); zmx = glmax(zm1, nv)
       
-         if (nid==0) then
-            print *,'                 __   _____  __          __  '
-            print *,'   ____   ___   / /__/ ___/ / /_ ____ _ / /_ '
-            print *,'  / __ \ / _ \ / //_/\__ \ / __// __ `// __ \'
-            print *,' / / / //  __// ,<  ___/ // /_ / /_/ // /_/ /'
-            print *,'/_/ /_/ \___//_/|_|/____/ \__/ \__,_//_.___/ '
-            print *,'COPYRIGHT (c) 2020-2024 DynFluid Laboratoire Paris ',NSVERSION
-            print *,'Nek5000 ', NVERSION
-            print *,''
-         endif
+            if (nid == 0) then
+               print *, '                 __   _____  __          __  '
+               print *, '   ____   ___   / /__/ ___/ / /_ ____ _ / /_ '
+               print *, '  / __ \ / _ \ / //_/\__ \ / __// __ `// __ \'
+               print *, ' / / / //  __// ,<  ___/ // /_ / /_/ // /_/ /'
+               print *, '/_/ /_/ \___//_/|_|/____/ \__/ \__,_//_.___/ '
+               print *, 'COPYRIGHT (c) 2020-2024 DynFluid Laboratoire Paris ', NSVERSION
+               print *, 'Nek5000 ', NVERSION
+               print *, ''
+            end if
       
-         call copy(bm1s, bm1, nv) ! never comment this !
-         ifbfcv = .false.
-
-         nof = 0
-         scal = .false.
-         do i = 1, size(ifpsco)
+            call copy(bm1s, bm1, nv) ! never comment this !
+            ifbfcv = .false.
+      
+            nof = 0
+            scal = .false.
+            do i = 1, size(ifpsco)
             if (ifpsco(i) .eqv. .true.) then
                scal = .true.
                nof = nof + 1
-            endif
-         enddo
-         if(ifto.eqv..true..or.scal.eqv..true.)then
-            if(nid.eq.0)write(6,*)'Scalars found:'
-            if(nid.eq.0)write(6,*)' ifto=',ifto
-            if(nid.eq.0)write(6,*)' ifpsco=',ifpsco
-            if(ifto) nof = nof + 1
-            if(nid.eq.0)write(6,*)'number of possible scalars (ldimt)=',ldimt
-            if(nid.eq.0)write(6,*)'number of scalars (nof)=',nof, npscal
-         endif
-
-         call oprzero(fcx,fcy,fcz) ! never comment this!
-         call rzero(fct,nx1*ny1*nz1*nelv)
-
-         isNekStabinit = .true.
+            end if
+            end do
+            if (ifto .eqv. .true. .or. scal .eqv. .true.) then
+               if (nid == 0) write (6, *) 'Scalars found:'
+               if (nid == 0) write (6, *) ' ifto=', ifto
+               if (nid == 0) write (6, *) ' ifpsco=', ifpsco
+               if (ifto) nof = nof + 1
+               if (nid == 0) write (6, *) 'number of possible scalars (ldimt)=', ldimt
+               if (nid == 0) write (6, *) 'number of scalars (nof)=', nof, npscal
+            end if
+      
+            call oprzero(fcx, fcy, fcz) ! never comment this!
+            call rzero(fct, nx1*ny1*nz1*nelv)
+      
+            isNekStabinit = .true.
       ! elseif (nid==0) then
       !    print *,'NekStab already initialized'
-      endif
-   
+         end if
+      
       end subroutine nekStab_init
-c---------------------------------------------------------------------
+      !---------------------------------------------------------------------
       subroutine nekStab_set_uparam
          use LinearStab
          implicit none
          include 'SIZE'
          include 'TOTAL'
       
-         if(istep.eq.0) call nekStab_init
-            
+         if (istep == 0) call nekStab_init
+      
          select case (floor(uparam(1)))
       
-          case(0)                   ! DNS
+         case (0)                   ! DNS
       
             call nekStab_outpost   ! outpost vorticity
             call nekStab_comment   ! print comments
-            call nekStab_energy   (vx,vy,vz,t,'total_energy.dat',glob_skip)
-            call nekStab_enstrophy(vx,vy,vz,t,'total_enstrophy.dat',glob_skip)
-            if (lastep .eq. 1) call nek_end
+            call nekStab_energy(vx, vy, vz, t, 'total_energy.dat', glob_skip)
+            call nekStab_enstrophy(vx, vy, vz, t, 'total_enstrophy.dat', glob_skip)
+            if (lastep == 1) call nek_end
       
-          case(1)                   ! fixed points computation
+         case (1)                   ! fixed points computation
       
             call nekStab_outpost   ! outpost vorticity
             call nekStab_comment   ! print comments
       
-            if( uparam(1) .eq. 1.1)then
+            if (uparam(1) == 1.1) then
                call SFD
-               if(uparam(5).eq.0)call nekStab_energy(vx,vy,vz,t,'total_energy.dat',glob_skip)
-            elseif( uparam(1) .eq. 1.2)then
-               if(nid.eq.0)write(6,*)'BOOSTCONV'
+               if (uparam(5) == 0) call nekStab_energy(vx, vy, vz, t, 'total_energy.dat', glob_skip)
+            elseif (uparam(1) == 1.2) then
+               if (nid == 0) write (6, *) 'BOOSTCONV'
                call BoostConv
-            elseif( uparam(1) .eq. 1.3)then
-               if(nid.eq.0)write(6,*)'DMT'
-               if(nid.eq.0)write(6,*)'stopping ! not yet ported to this version'; call nek_end
+            elseif (uparam(1) == 1.3) then
+               if (nid == 0) write (6, *) 'DMT'
+               if (nid == 0) write (6, *) 'stopping ! not yet ported to this version'; call nek_end
       ! call DMT
-            elseif( uparam(1) .eq. 1.4)then
-               if(nid.eq.0)write(6,*)'TDF'
+            elseif (uparam(1) == 1.4) then
+               if (nid == 0) write (6, *) 'TDF'
                call TDF
-            endif
+            end if
       
-            if(ifbfcv)call nek_end
+            if (ifbfcv) call nek_end
       
-          case(2) ! Newton-Krylov solver
+         case (2) ! Newton-Krylov solver
       
       ! Initialize flags based on the value of uparam(1)
-            isNewtonFP  = (uparam(1) .eq. 2.0)
-            isNewtonPO  = (uparam(1) .eq. 2.1)
-            isNewtonPO_T = (uparam(1) .eq. 2.2)
+            isNewtonFP = (uparam(1) == 2.0)
+            isNewtonPO = (uparam(1) == 2.1)
+            isNewtonPO_T = (uparam(1) == 2.2)
       
       ! Conditional statements for each Newton-Krylov case
-            if (nid .eq. 0) then
-               if (isNewtonFP) then
-                  write(6,*) 'Newton-Krylov for fixed points...'
-               elseif (isNewtonPO) then
-                  write(6,*) 'Newton-Krylov for UPOs...'
-               elseif (isNewtonPO_T) then
-                  write(6,*) 'Newton-Krylov for forced UPOs...'
-               else
-                  write(6,*) 'Unrecognized option...'
-                  call nek_end
-               endif
-            endif
+            if (nid == 0) then
+            if (isNewtonFP) then
+               write (6, *) 'Newton-Krylov for fixed points...'
+            elseif (isNewtonPO) then
+               write (6, *) 'Newton-Krylov for UPOs...'
+            elseif (isNewtonPO_T) then
+               write (6, *) 'Newton-Krylov for forced UPOs...'
+            else
+               write (6, *) 'Unrecognized option...'
+               call nek_end
+            end if
+            end if
       
       ! Proceed with Newton-Krylov computation
             call newton_krylov
             call nek_end
       
-          case(3)                   ! eigenvalue problem
+         case (3)                   ! eigenvalue problem
       
-            isDirect = (uparam(1) .eq. 3.1)
-            isFloquetDirect = (uparam(1) .eq. 3.11)
-
-            isAdjoint = (uparam(1) .eq. 3.2)
-            isFloquetAdjoint = (uparam(1) .eq. 3.21)
-
-            isTransientGrowth = (uparam(1) .eq. 3.3)      
-            isFloquetTransientGrowth = (uparam(1) .eq. 3.31)
-
-            isResolvent = (uparam(1) .eq. 3.4)
-            isFloquetResolvent = (uparam(1) .eq. 3.41)
-
-            ! if(isDirect.or.isFloquetDirect.or.isAdjoint.or.isFloquetAdjoint)then
-            !    call linear_stability_analysis
-            ! elseif(isTransientGrowth.or.isFloquetTransientGrowth)then
-            !    call transient_growth_analysis
-            ! elseif(isResolvent.or.isFloquetResolvent)then
-            !    call resolvent_analysis
-            ! endif 
-            ! call nek_end
+            isDirect = (uparam(1) == 3.1)
+            isFloquetDirect = (uparam(1) == 3.11)
       
-          case(4)                   ! in postprocessing.f
+            isAdjoint = (uparam(1) == 3.2)
+            isFloquetAdjoint = (uparam(1) == 3.21)
       
-            if(uparam(01) .eq. 4.0) then ! all
+            isTransientGrowth = (uparam(1) == 3.3)
+            isFloquetTransientGrowth = (uparam(1) == 3.31)
+      
+            isResolvent = (uparam(1) == 3.4)
+            isFloquetResolvent = (uparam(1) == 3.41)
+      
+      ! if(isDirect.or.isFloquetDirect.or.isAdjoint.or.isFloquetAdjoint)then
+      !    call linear_stability_analysis
+      ! elseif(isTransientGrowth.or.isFloquetTransientGrowth)then
+      !    call transient_growth_analysis
+      ! elseif(isResolvent.or.isFloquetResolvent)then
+      !    call resolvent_analysis
+      ! endif
+      ! call nek_end
+      
+         case (4)                   ! in postprocessing.f
+      
+            if (uparam(01) == 4.0) then ! all
                call stability_energy_budget
                call wave_maker
                call bf_sensitivity
-            endif
+            end if
       
       !     -----> Direct mode kinetic energy budget.
-            if(uparam(01) .eq. 4.1) call stability_energy_budget
+            if (uparam(01) == 4.1) call stability_energy_budget
       
       !     -----> Wavemaker computation.
-            if(uparam(01) .eq. 4.2) call wave_maker
+            if (uparam(01) == 4.2) call wave_maker
       
       !     -----> Baseflow sensitivity.
-            if(uparam(01) .eq. 4.3) call bf_sensitivity
+            if (uparam(01) == 4.3) call bf_sensitivity
       
       !     -----> Sensitivity to steady force.
-            if(uparam(01) .eq. 4.41 .or. uparam(01) .eq. 4.42) call ts_steady_force_sensitivity
-            if(uparam(01) .eq. 4.43) call delta_forcing
+            if (uparam(01) == 4.41 .or. uparam(01) == 4.42) call ts_steady_force_sensitivity
+            if (uparam(01) == 4.43) call delta_forcing
       
             call nek_end
       
          end select
       
       end subroutine nekStab_set_uparam
-c---------------------------------------------------------------------
+      !---------------------------------------------------------------------

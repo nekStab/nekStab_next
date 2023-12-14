@@ -4,44 +4,33 @@ c-----------------------------------------------------------------------
       implicit none
       include 'SIZE'
       include 'TOTAL'
+      
       call nekstab_init
 
       !if(istep.eq.0)then !change defaults
+      xLspg = 5
+      xRspg = 5
+      spng_st = 1.7!; call bcast(spng_str, wdsize)
+      k_dim = 200
+      schur_tgt = 2
+      maxmodes = 2 
+      findiff_order = 1
+      ifdyntol = .true.
 
-            xLspg = 5
-            xRspg = 5
-            spng_st = 1.7!; call bcast(spng_str, wdsize)
-
-            k_dim = 200
-            schur_tgt = 2
-            maxmodes = 2 
-            findiff_order = 1
-            call activate_sponge ! activate sponge
+      call activate_sponge ! activate sponge
 
       !endif
 
-
-      ! isNewtonFP  = .true.!# ; uparam(1) = 2.0
+      ! isNewtonFP  = .true.
       ! call newton_krylov
-      ! isNewtonFP  = .false.!; uparam(1) = 0.0
+      ! isNewtonFP  = .false.
 
-      ! isDirect= .true.
-      ! call linear_stability_analysis
-      ! isDirect= .false.
-      
-      ! isAdjoint= .true.
-      ! call linear_stability_analysis
-      ! isAdjoint= .false.
-      
-      ! isTransientGrowth= .true.
-      ! call transient_growth_analysis
-      ! isTransientGrowth= .false.
-      
-      isResolvent= .true.
-      call resolvent_analysis
-      isResolvent= .false.
+      ! call linear_stability_analysis('steady','direct')
+      ! call linear_stability_analysis('steady','adjoint')
+      ! call transient_growth_analysis('steady')
+      call resolvent_analysis('steady')
 
-      call nek_end
+      !call nek_end
 
       ! call nekStab_outpost   ! outpost vorticity
       ! call nekStab_comment   ! print comments

@@ -54,3 +54,10 @@ LightKrylov
 *.smod
 
 examples/back_fstep/baseflow/rstbfs0.f00001
+examples/cylinder/bRr*
+examples/cylinder/fRi*
+examples/cylinder/fRr*
+examples/cylinder/oR*
+examples/cylinder/pU*
+examples/cylinder/pV*
+examples/torus
