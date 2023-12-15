@@ -55,7 +55,23 @@ else
     #FFLAGS+=" -std=legacy -Wall" # Provides a backtrace in case of errors, useful for debugging.
 
 fi
-
+#-------------------------------------------------------------------------------
+# Architecture Detection
+#-------------------------------------------------------------------------------
+case $(uname -s) in
+    Darwin)
+        case $(uname -p) in
+            x86_64) ar="x86_64" ;;
+            arm)    ar="arm" ;; # not compatile with mcmodel=large
+        esac
+        ;;
+    Linux)
+        case $(uname -p) in
+            x86_64) ar="x86_64"; FFLAGS+=" -mcmodel=large" ;;
+            arm)    ar="arm" ;;
+        esac
+        ;;
+esac
 #-------------------------------------------------------------------------------
 # Linking with LAPACK and BLAS
 #-------------------------------------------------------------------------------
@@ -81,24 +97,6 @@ export FFLAGS+=" -I$HOME/.local/include"
 
 #-------------------------------------------------------------------------------
 LD="$FC" # linker ! 
-#-------------------------------------------------------------------------------
-# Architecture Detection
-#-------------------------------------------------------------------------------
-case $(uname -s) in
-    Darwin)
-        case $(uname -p) in
-            x86_64) ar="x86_64" ;;
-            arm)    ar="arm" ;; # not compatile with mcmodel=large
-        esac
-        ;;
-    Linux)
-        case $(uname -p) in
-            x86_64) ar="x86_64"; FFLAGS+=" -mcmodel=large" ;;
-            arm)    ar="arm" ;;
-        esac
-        ;;
-esac
-
 #-------------------------------------------------------------------------------
 # Final Preparations
 #-------------------------------------------------------------------------------
