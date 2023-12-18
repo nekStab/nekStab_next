@@ -25,10 +25,10 @@ c-----------------------------------------------------------------------
       ! call newton_krylov
       ! isNewtonFP  = .false.
 
-      ! call linear_stability_analysis('steady','direct')
+      call linear_stability_analysis('steady','direct')
       ! call linear_stability_analysis('steady','adjoint')
       ! call transient_growth_analysis('steady')
-      call resolvent_analysis('steady')
+      ! call resolvent_analysis('steady')
 
       !call nek_end
 

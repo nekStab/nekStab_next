@@ -350,7 +350,8 @@
                nIv = trim(evop)//'Iv' ! imaginary part of vorticity
       
                do i = 1, maxmodes
-      
+                  time = real(i) ! adding a unique time value for each more
+      !       to allow easy manipulation in ParaView
                   if (nid == 0) then
                      write (*, *) "Outposting eigenvector: ", i, "/", maxmodes
                      write (*, *) "  Sigma: ", real(eigvals(i))

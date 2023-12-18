@@ -66,6 +66,8 @@
                param(10) = q%time
             end if
       
+            call outpost2(q%vx, q%vy, q%vz, q%pr, q%t, nof, 'ic_')
+
       !     --> Setup/Update the nek-parameters for the Newton solver.
             call prepare_linearized_solver ! compute nsteps
       

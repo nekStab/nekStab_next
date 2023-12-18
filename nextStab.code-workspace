@@ -1,9 +1,12 @@
 {
 	"folders": [
-		{
-			"path": "."
-		}
-	],
+      {
+         "path": "."
+      },
+      {
+         "path": "../nekStab"
+      }
+   ],
 	"settings": {
 		"fortran.provide.autocomplete": "fortls",
 		"fortran.provide.hover": "fortls",

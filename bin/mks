@@ -6,6 +6,7 @@ FC="mpif90" # default (changed from mpif77)
 CC="mpicc" # default 
 FFLAGS="" # fortran flags
 CFLAGS="" # c flags
+FFLAGS_KRYLOV="" # fortran flags for LightKrylov
 USR_LFLAGS="" # linking flags
 ar="" # architecture specific 
 
@@ -22,15 +23,18 @@ if command -v mpiifort >/dev/null 2>&1; then
     FC="mpiifort"
     CC="mpiicc"
     FFLAGS+=" -fixed -extend-source" # Enables long lines.
+    FFLAGS_KRYLOV+=" -O3 -no-prec-div -fp-model fast=2 -xHost -g -traceback"
     if command -v mpiifx >/dev/null 2>&1; then
         echo "Using LLVM version of Intel compiler..."
         FC="mpiifx"
         CC="mpiicx"
         CFLAGS+=" -w -Wno-unused-command-line-argument"
-        FFLAGS+=" -w -xHost -qmkl" # Suppresses all warning messages (otherwise will not compile nek5000) 
+        FFLAGS+=" -w -xHost -qmkl" # Suppresses all warning messages (otherwise will not compile nek5000)
+        FFLAGS_KRYLOV+=" -qmkl"
     else
         echo "LLVM not found, using classic."
-        export USR_LFLAGS+=" -qmkl"
+        USR_LFLAGS+=" -qmkl"
+        FFLAGS_KRYLOV+=" -ipo -qmkl"
         #FFLAGS+=" -ipo -O3 -no-prec-div -fp-model fast=2"
     fi
 
@@ -45,15 +49,16 @@ else
     FFLAGS+=" -march=native" # Enables all instruction subsets supported by the local machine.
     FFLAGS+=" -g" # Enables debugging information.
     FFLAGS+=" -fbacktrace" # Provides a backtrace in case of errors, useful for debugging.
-    #FFLAGS+=" -fanalyzer" # Enable the Clang Static Analyzer for code analysis
-    # FFLAGS+=" -Ofast" # Enable aggressive optimization level for maximum performance
-    # FFLAGS+=" -ffast-math" # Enable fast math optimizations for floating-point operations
-    # FFLAGS+=" -funsafe-math-optimizations" # Enable unsafe math optimizations for improved performance
+    FFLAGS+=" -fanalyzer" # Enable the Clang Static Analyzer for code analysis
+    FFLAGS+=" -Ofast" # Enable aggressive optimization level for maximum performance
+    FFLAGS+=" -ffast-math" # Enable fast math optimizations for floating-point operations
+    FFLAGS+=" -funsafe-math-optimizations" # Enable unsafe math optimizations for improved performance
 
     # comment Nek5000/core/makenek.inc:226 with : sed -i '226s/^/#/' $HOME/nextStab/Nek5000/core/makenek.inc
     #FFLAGS+=" -std=legacy -w" # Provides a backtrace in case of errors, useful for debugging.
     #FFLAGS+=" -std=legacy -Wall" # Provides a backtrace in case of errors, useful for debugging.
 
+    FFLAGS_KRYLOV+=" -O3 -march=native -funroll-loops -ffast-math -g -fbacktrace"
 fi
 #-------------------------------------------------------------------------------
 # Architecture Detection
@@ -62,7 +67,7 @@ case $(uname -s) in
     Darwin)
         case $(uname -p) in
             x86_64) ar="x86_64" ;;
-            arm)    ar="arm" ;; # not compatile with mcmodel=large
+            arm)    ar="arm"; FFLAGS+=" -mcmodel=small" ;; # not compatile with mcmodel=large
         esac
         ;;
     Linux)
@@ -75,28 +80,88 @@ esac
 #-------------------------------------------------------------------------------
 # Linking with LAPACK and BLAS
 #-------------------------------------------------------------------------------
-# Lapack is a library of linear algebra routines.
-# Blas (Basic Linear Algebra Subprograms) is used by Lapack.
+
+#-------------------------------------------------------------------------------
+
+LIBRARY_NAME="libopenblas.dylib"
+COMMON_PATHS=("/usr/local/opt/openblas/lib" "/usr/lib" "/usr/local/lib")
 if [ "$FC" = "mpif90" ]; then
-   if ldconfig -p | grep -q libopenblas; then
-      echo "OpenBLAS exists in path, using it:"
+   echo "Searching for $LIBRARY_NAME in common paths..."
+   for path in "${COMMON_PATHS[@]}"; do
+      if [ -f "$path/$LIBRARY_NAME" ]; then
+         OPENBLAS_PATH="$path/$LIBRARY_NAME"
+         break
+      fi
+   done
+   if [ -n "$OPENBLAS_PATH" ]; then
+      echo "OpenBLAS found at $OPENBLAS_PATH. Using it:"
+      OPENBLAS_DIR=$(dirname $OPENBLAS_PATH)
       export USR_LFLAGS+=" -lopenblas"
-      export USR_LFLAGS+=" -L/usr/local/opt/openblas/lib"
-      export FFLAGS+=" -I/usr/local/opt/openblas/include"
+      echo "Adding -L$OPENBLAS_DIR to USR_LFLAGS"
+      export USR_LFLAGS+=" -L$OPENBLAS_DIR"
+      echo "Adding -I$OPENBLAS_DIR/include to FFLAGS"
+      export FFLAGS+=" -I$OPENBLAS_DIR/include"
    else
-      echo "OpenBLAS does not exist, using LAPACK and BLAS:"
+      echo "$LIBRARY_NAME not found. Using LAPACK and BLAS instead:"
       export USR_LFLAGS+=" -llapack -lblas"
    fi
 fi
 #-------------------------------------------------------------------------------
 # Linking with LightKrylov library
 #-------------------------------------------------------------------------------
-export USR_LFLAGS+=" -lLightKrylov"
+# Default values for options
+KRYLOV_OPTION=false
+CLEAN_OPTION=false
+
+# Parse command-line options
+while (( "$#" )); do
+   case "$1" in
+      --krylov)
+         KRYLOV_OPTION=true
+         shift
+         ;;
+      --clean)
+         CLEAN_OPTION=true
+         shift
+         ;;
+      *)
+         # If the argument is not a known option, just shift it away
+         shift
+         ;;
+   esac
+done
+
+# If KRYLOV_OPTION is true, install the library
+if $KRYLOV_OPTION; then
+      echo "libLightKrylov.a not found. Installing..."
+      PREVIOUS_DIR=$(pwd)
+      cd $NEKSTAB_SOURCE_ROOT/LightKrylov
+      { 
+         echo "Compiler for LightKrylov: $FC"
+         echo "Flags for LightKrylov: $FFLAGS_KRYLOV"
+         
+         # If CLEAN_OPTION is true, clean the build
+         if $CLEAN_OPTION; then
+               fpm clean
+         fi
+         
+         fpm test --compiler="$FC" --flag="$FFLAGS_KRYLOV"
+         fpm install --compiler="$FC" --flag="$FFLAGS_KRYLOV"
+      } #2>&1 krylov.log
+      cd $PREVIOUS_DIR
+fi
+echo "Adding -L$HOME/.local/lib to USR_LFLAGS"
 export USR_LFLAGS+=" -L$HOME/.local/lib"
+echo "Adding -I$HOME/.local/include to FFLAGS"
 export FFLAGS+=" -I$HOME/.local/include"
 
+echo "Adding -lLightKrylov to USR_LFLAGS"
+export USR_LFLAGS+=" -lLightKrylov"
+
 #-------------------------------------------------------------------------------
+echo "Setting linker to $FC"
 LD="$FC" # linker ! 
+export LD
 #-------------------------------------------------------------------------------
 # Final Preparations
 #-------------------------------------------------------------------------------
@@ -146,7 +211,7 @@ if [ -f "$FILE" ]; then
    # Check if an include line for makefile_nekStab is in the file
    if grep -q "^include .*makefile_nekStab" "$FILE"; then
       # The include line is in the file, replace it
-      sed -i "s|^include .*makefile_nekStab|$INCLUDE_LINE|" "$FILE"
+      sed -i "" "s|^include .*makefile_nekStab|$INCLUDE_LINE|" "$FILE"
    else
       # The include line is not in the file, append it
       echo -e "\n$INCLUDE_LINE" >> "$FILE"

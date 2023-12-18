@@ -1,0 +1,125 @@
+#!/bin/bash
+set -a
+
+# Compiler and architecture settings
+FC="mpif90" # default (changed from mpif77)
+CC="mpicc" # default 
+FFLAGS="" # fortran flags
+CFLAGS="" # c flags
+FFLAGS_KRYLOV="" # fortran flags for LightKrylov
+USR_LFLAGS="" # linking flags
+ar="" # architecture specific 
+
+# Fetch version information for user reference
+N_VERSION=$(git -C $NEK_SOURCE_ROOT describe --tag --long --always)
+NS_VERSION=$(git -C $NEKSTAB_SOURCE_ROOT describe --tag --long --always)
+
+#-------------------------------------------------------------------------------
+# Compiler Detection
+#-------------------------------------------------------------------------------
+if command -v mpiifort >/dev/null 2>&1; then
+    # Intel compiler found
+    echo "Intel compiler found: $(mpiifort -v)"
+    FC="mpiifort"
+    CC="mpiicc"
+    FFLAGS+=" -extend-source"
+    
+    if [[ $(ifort --version 2>&1) =~ "oneapi" ]]; then
+        FFLAGS+=" -qmkl"
+    else
+        FFLAGS+=" -mkl -xHost"
+    fi
+    
+    FFLAGS+=" -g -traceback"
+    USR_LFLAGS+=" -I${MKLROOT}/include -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a ${MKLROOT}/lib/intel64/libmkl_sequential.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -lpthread -lm -ldl"
+else
+    if [[ "$(uname)" == "Darwin" ]]; then
+        # On macOS with Homebrew's mpif90
+        if [[ -f "/opt/homebrew/bin/mpif90" ]]; then
+            echo "Homebrew mpif90 found"
+            FC="/opt/homebrew/bin/mpif90"
+        else
+            echo "Clang compiler found: $(clang --version | head -n1)"
+        fi
+    else
+        # On Linux, we expect gcc to be gcc
+        echo "GCC compiler found: $(gcc --version | head -n1)"
+    fi
+    FFLAGS+=" -ffixed-form" # Enables fixed-form source code, necessary as we mix .f90 files.
+    FFLAGS+=" -ffixed-line-length-none" # Allows for any line length in fixed-form source code.
+    FFLAGS+=" -march=native" # Enables all instruction subsets supported by the local machine.
+    FFLAGS+=" -g" # Enables debugging information.
+    FFLAGS+=" -fbacktrace" # Provides a backtrace in case of errors, useful for debugging.
+fi
+
+
+export USR_LFLAGS+=" -L$HOME/.local/lib"
+export FFLAGS+=" -I$HOME/.local/include"
+export USR_LFLAGS+=" -lLightKrylov"
+
+LD="$FC" # linker ! 
+#-------------------------------------------------------------------------------
+# Architecture Detection
+#-------------------------------------------------------------------------------
+case $(uname -s) in
+    Darwin)
+        case $(uname -p) in
+            x86_64) ar="x86_64" ;;
+            arm)    ar="arm" ;; # not compatile with mcmodel=large
+        esac
+        ;;
+    Linux)
+        case $(uname -p) in
+            x86_64) ar="x86_64"; FFLAGS+=" -mcmodel=large" ;;
+            arm)    ar="arm" ;;
+        esac
+        ;;
+esac
+
+#-------------------------------------------------------------------------------
+# Final Preparations
+#-------------------------------------------------------------------------------
+FFLAGS+=" -DNVERSION=\"'${N_VERSION}'\" -DNSVERSION=\"'${NS_VERSION}'\""
+export FFLAGS
+
+# User-specified object files
+USR="krylov_subspace.o"
+USR+=" nek_vectors.o"
+USR+=" linear_operators.o"
+USR+=" matvec.o"
+USR+=" krylov_decomposition.o"
+USR+=" eigensolvers.o"
+USR+=" lapack_wrapper.o"
+USR+=" fixedp.o"
+USR+=" utils.o"
+USR+=" linear_stab.o"
+USR+=" main.o"
+USR+=" forcing.o"
+USR+=" IO.o"
+USR+=" postproc.o"
+USR+=" newton_krylov.o"
+USR+=" sensitivity.o"
+# Check if the makefile_usr file exists and source it
+if [ -f "makefile_usr" ]; then
+    source makefile_usr
+fi
+export USR
+
+# Output summary of settings
+echo "Nek5000 version: $N_VERSION"
+echo "nekStab version: $NS_VERSION"
+echo "preparing compilation with: $(which $FC; echo $FFLAGS $USR_LFLAGS)"
+
+# Update makefile and static variables
+cp -v $NEKSTAB_SOURCE_ROOT/core/NEKSTAB NEKSTAB.inc
+echo "include $NEKSTAB_SOURCE_ROOT/core/makefile_nekStab" > makefile_usr.inc
+
+set +a -e
+$NEK_SOURCE_ROOT/bin/nekconfig $@
+if [[ $1 != "clean" ]]; then
+ $NEK_SOURCE_ROOT/bin/nekconfig -build-dep
+ set -o pipefail
+ touch $1.usr 
+ make -j4 2>&1 | tee -a build.log
+ set +o pipefail
+fi
